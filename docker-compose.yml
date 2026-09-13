@@ -1,0 +1,43 @@
+# Local development infrastructure only. Ports are deliberately unusual: 5432,
+# 5433 and 6379 are all commonly taken by a locally installed server, and a
+# collision shows up as an authentication failure rather than a refused
+# connection, which is a bad hour to lose.
+# Production runs Postgres and Redis
+# as managed Fly apps; nothing here is used in deployment.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: hifi-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hifi
+      POSTGRES_PASSWORD: hifi
+      POSTGRES_DB: hifi
+    ports:
+      - "55432:5432"
+    volumes:
+      - hifi-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hifi -d hifi"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: hifi-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "56379:6379"
+    volumes:
+      - hifi-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  hifi-postgres:
+  hifi-redis:

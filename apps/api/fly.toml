@@ -1,0 +1,33 @@
+# Control plane HTTP API. Always on: it receives GitHub, Stripe, and Discord
+# webhooks, so it must never be scaled to zero.
+app = "hifi-api"
+primary_region = "iad"
+
+[build]
+  dockerfile = "../../deploy/Dockerfile"
+  [build.args]
+    APP = "api"
+
+[env]
+  NODE_ENV = "production"
+  API_HOST = "0.0.0.0"
+  API_PORT = "8080"
+  HIFI_SERVICE = "api"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 2
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "15s"
+    method = "GET"
+    timeout = "5s"
+    path = "/healthz"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

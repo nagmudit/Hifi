@@ -1,0 +1,26 @@
+# Worker image definition only.
+#
+# Worker machines are NOT deployed with `fly deploy`. Tenant isolation is the
+# machine boundary, so the control plane creates one machine and one volume per
+# tenant through the Machines API, from the image this file builds. Machines
+# auto-stop when idle and are started again at job start.
+#
+#   fly deploy --build-only --push --config apps/worker/fly.toml
+app = "hifi-worker"
+primary_region = "iad"
+
+[build]
+  dockerfile = "../../deploy/Dockerfile.worker"
+
+[env]
+  NODE_ENV = "production"
+  HIFI_SERVICE = "worker"
+  HIFI_DATA_DIR = "/data"
+
+[mounts]
+  source = "hifi_tenant_data"
+  destination = "/data"
+
+[[vm]]
+  size = "performance-2x"
+  memory = "4gb"

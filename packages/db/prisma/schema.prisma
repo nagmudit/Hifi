@@ -1,0 +1,488 @@
+// HiFi data model.
+//
+// Conventions:
+//   - Model and column names stay in Prisma default casing. No hand-written SQL
+//     is expected outside migrations.
+//   - Money is stored as integer micro-USD (1_000_000 = $1.00) so that sub-cent
+//     per-job model costs stay exact. Per-job costs are Int; tenant period
+//     aggregates are BigInt because they can exceed the Int range.
+//   - Secret material appears only as Credential.ciphertext. Nothing else in
+//     this schema may ever hold a plaintext key.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Plan {
+  free
+  starter
+  pro
+  enterprise
+}
+
+enum ModelPreference {
+  cheapest
+  balanced
+  best
+}
+
+enum MembershipRole {
+  owner
+  member
+}
+
+enum CredentialKind {
+  github_app_installation
+  model_provider
+  vercel
+}
+
+enum CredentialStatus {
+  active
+  invalid
+  revoked
+}
+
+enum PackageManager {
+  npm
+  pnpm
+  yarn
+  bun
+  unknown
+}
+
+/// Result of the cheap "can we even build this repo" check. Cached so a repo
+/// that cannot be installed fails in seconds on the second attempt rather than
+/// burning a full job timeout.
+enum PreflightStatus {
+  unknown
+  ok
+  failed
+}
+
+/// The job state machine. awaiting_preview deliberately does not exist: a job
+/// ends once the pull request is open, and a detached watcher edits the Discord
+/// message when the deployment webhook arrives.
+enum JobStatus {
+  queued
+  claimed
+  preparing
+  planning
+  editing
+  testing
+  capturing
+  pushing
+  waiting_input
+  reporting
+  succeeded
+  failed
+  cancelled
+  timed_out
+}
+
+enum PreviewStatus {
+  not_configured
+  pending
+  ready
+  failed
+  timed_out
+}
+
+enum FailureCode {
+  quota_exceeded
+  spend_cap_exceeded
+  concurrency_exceeded
+  no_channel_binding
+  tenant_suspended
+  credential_missing
+  credential_invalid
+  repo_preflight_failed
+  checkout_failed
+  install_failed
+  agent_error
+  agent_timeout
+  tests_failed
+  screenshot_failed
+  protected_branch
+  push_failed
+  github_error
+  clarification_timeout
+  cancelled_by_user
+  wall_clock_timeout
+  internal_error
+}
+
+enum CostTier {
+  cheap
+  mid
+  frontier
+}
+
+enum JobEventType {
+  status_change
+  agent_message
+  tool_call
+  command
+  notice
+  warning
+  error
+}
+
+enum WebhookSource {
+  github
+  stripe
+  discord
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy
+// ---------------------------------------------------------------------------
+
+/// One tenant per Discord guild. The tenant is also the isolation boundary: one
+/// Fly Machine and one volume per tenant, never shared.
+model Tenant {
+  id             String  @id @default(cuid())
+  discordGuildId String  @unique
+  name           String
+  iconUrl        String?
+
+  plan                 Plan            @default(free)
+  modelPreference      ModelPreference @default(balanced)
+  stripeCustomerId     String?         @unique
+  stripeSubscriptionId String?         @unique
+
+  jobQuotaMonthly    Int       @default(25)
+  jobsUsedThisPeriod Int       @default(0)
+  maxConcurrentJobs  Int       @default(1)
+  periodStart        DateTime  @default(now())
+  periodEnd          DateTime?
+
+  /// Hard ceiling on estimated model spend per period, enforced by the model
+  /// proxy mid-turn rather than only checked at job start.
+  spendCapMicroUsd        BigInt @default(2000000)
+  spendThisPeriodMicroUsd BigInt @default(0)
+
+  suspended       Boolean   @default(false)
+  suspendedReason String?
+  suspendedAt     DateTime?
+
+  flyMachineId String?
+  flyVolumeId  String?
+  flyRegion    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships     Membership[]
+  credentials     Credential[]
+  repos           Repo[]
+  channelBindings ChannelBinding[]
+  jobs            Job[]
+
+  @@index([suspended])
+}
+
+model User {
+  id            String  @id @default(cuid())
+  discordUserId String  @unique
+  username      String
+  globalName    String?
+  avatarUrl     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships        Membership[]
+  jobsRequested      Job[]            @relation("JobRequestedBy")
+  jobsCancelled      Job[]            @relation("JobCancelledBy")
+  credentialsCreated Credential[]     @relation("CredentialCreatedBy")
+  bindingsCreated    ChannelBinding[] @relation("BindingCreatedBy")
+}
+
+model Membership {
+  id       String         @id @default(cuid())
+  tenantId String
+  userId   String
+  role     MembershipRole @default(member)
+
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Credentials
+// ---------------------------------------------------------------------------
+
+/// Sealed customer secrets. ciphertext is a libsodium sealed box wrapped by the
+/// master key identified by keyVersion. Plaintext is unsealed into worker memory
+/// at job start and must never be written to disk, logs, or error payloads.
+///
+/// externalId disambiguates rows of the same kind: a GitHub App installation ID,
+/// or the provider name for a model key. It also lets one tenant hold several
+/// GitHub installations across different organisations.
+model Credential {
+  id         String           @id @default(cuid())
+  tenantId   String
+  kind       CredentialKind
+  status     CredentialStatus @default(active)
+  externalId String
+
+  ciphertext Bytes
+  keyVersion Int   @default(1)
+
+  /// Non-secret descriptive fields only: provider name, account login, scopes.
+  metadata Json @default("{}")
+
+  lastValidatedAt DateTime?
+  lastUsedAt      DateTime?
+  revokedAt       DateTime?
+  createdByUserId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation("CredentialCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  repos Repo[]
+
+  @@unique([tenantId, kind, externalId])
+  @@index([tenantId, kind, status])
+}
+
+// ---------------------------------------------------------------------------
+// Repositories and bindings
+// ---------------------------------------------------------------------------
+
+model Repo {
+  id            String  @id @default(cuid())
+  tenantId      String
+  githubRepoId  BigInt
+  fullName      String
+  defaultBranch String  @default("main")
+  isPrivate     Boolean @default(true)
+  archived      Boolean @default(false)
+
+  /// The github_app_installation credential that grants access to this repo.
+  credentialId String?
+
+  mirrorPath    String?
+  lastFetchedAt DateTime?
+
+  packageManager PackageManager @default(unknown)
+  installCommand String?
+  testCommand    String?
+  devCommand     String?
+  buildCommand   String?
+  framework      String?
+  lockfileHash   String?
+  detectionAt    DateTime?
+
+  preflightStatus  PreflightStatus @default(unknown)
+  preflightMessage String?
+  preflightAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  credential Credential? @relation(fields: [credentialId], references: [id], onDelete: SetNull)
+
+  channelBindings ChannelBinding[]
+  jobs            Job[]
+
+  @@unique([tenantId, githubRepoId])
+  @@index([tenantId, fullName])
+}
+
+/// Discord channel IDs are globally unique, so the plain unique constraint is
+/// what enforces "a channel binds to exactly one repo". A repo may be bound from
+/// many channels.
+model ChannelBinding {
+  id               String  @id @default(cuid())
+  tenantId         String
+  discordChannelId String  @unique
+  repoId           String
+  defaultSubPath   String?
+  createdByUserId  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  repo      Repo   @relation(fields: [repoId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation("BindingCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([repoId])
+}
+
+// ---------------------------------------------------------------------------
+// Jobs
+// ---------------------------------------------------------------------------
+
+model Job {
+  id       String  @id @default(cuid())
+  tenantId String
+  repoId   String?
+
+  requestedByUserId String
+  cancelledByUserId String?
+
+  discordChannelId String
+  /// Idempotency guard. A gateway reconnect can redeliver messageCreate, and a
+  /// redelivery must never open a second pull request.
+  discordMessageId       String  @unique
+  discordThreadId        String?
+  discordStatusMessageId String?
+
+  prompt String @db.Text
+  /// R2 object keys for attachments, downloaded in the gateway handler because
+  /// Discord CDN links are signed and expire.
+  attachments Json @default("[]")
+
+  status       JobStatus @default(queued)
+  statusDetail String?
+  attempt      Int       @default(0)
+
+  /// Inputs to model routing, recorded verbatim so the decision can be replayed
+  /// and later used as training data for a learned router.
+  signals        Json?
+  modelSelection Json?
+  visionModel    String?
+
+  /// Clarification round trip. A parked job releases its concurrency slot.
+  clarifyingQuestion String?   @db.Text
+  waitingSince       DateTime?
+
+  branchName String?
+  headSha    String?
+  prNumber   Int?
+  prUrl      String?
+  prMergedAt DateTime?
+  prClosedAt DateTime?
+
+  previewStatus PreviewStatus @default(not_configured)
+  previewUrl    String?
+  previewAt     DateTime?
+
+  testSummary    Json?
+  screenshotKeys String[] @default([])
+  diffStat       Json?
+
+  tokensIn        Int @default(0)
+  tokensOut       Int @default(0)
+  tokensCacheRead Int @default(0)
+  costMicroUsd    Int @default(0)
+
+  bullJobId    String?
+  flyMachineId String?
+  deadlineAt   DateTime?
+  heartbeatAt  DateTime?
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  durationMs   Int?
+
+  failureCode    FailureCode?
+  failureMessage String?      @db.Text
+
+  meteredAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  repo        Repo?  @relation(fields: [repoId], references: [id], onDelete: SetNull)
+  requestedBy User   @relation("JobRequestedBy", fields: [requestedByUserId], references: [id])
+  cancelledBy User?  @relation("JobCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
+
+  events JobEvent[]
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, status])
+  @@index([status, deadlineAt])
+  /// Correlation key for the detached preview watcher: the deployment_status
+  /// webhook arrives carrying a head SHA and nothing else we control.
+  @@index([repoId, headSha])
+  @@index([discordThreadId])
+}
+
+/// Append-only. Powers the live Discord thread updates and the dashboard
+/// timeline. seq is assigned by the writer so ordering never depends on
+/// timestamp resolution.
+model JobEvent {
+  id    String       @id @default(cuid())
+  jobId String
+  seq   Int
+  type  JobEventType
+
+  fromStatus JobStatus?
+  toStatus   JobStatus?
+  message    String?    @db.Text
+  data       Json?
+
+  createdAt DateTime @default(now())
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, seq])
+  @@index([jobId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Registries and infrastructure
+// ---------------------------------------------------------------------------
+
+/// Capability registry. Vision support is read from this table and never
+/// inferred from a model name.
+model ModelEntry {
+  id          String @id @default(cuid())
+  provider    String
+  modelId     String
+  displayName String
+
+  vision         Boolean @default(false)
+  toolUseQuality Int     @default(3)
+  contextWindow  Int
+  maxOutput      Int?
+  costTier       CostTier
+
+  inputMicroUsdPerMTok     Int
+  outputMicroUsdPerMTok    Int
+  cacheReadMicroUsdPerMTok Int?
+
+  enabled Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, modelId])
+  @@index([enabled, costTier])
+}
+
+/// Delivery-ID dedupe for every inbound webhook. Providers retry, and a retried
+/// deployment_status or Stripe event must not be processed twice.
+model WebhookEvent {
+  id         String        @id @default(cuid())
+  source     WebhookSource
+  deliveryId String
+  eventType  String?
+  receivedAt DateTime      @default(now())
+
+  @@unique([source, deliveryId])
+  @@index([receivedAt])
+}
