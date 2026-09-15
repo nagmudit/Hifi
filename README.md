@@ -50,6 +50,10 @@ pnpm dev:worker
 
 `pnpm dev:bot` exits immediately until a Discord token is configured, which is expected before M2.
 
+## Documentation
+
+[`AGENTS.md`](AGENTS.md) is the contract any coding agent reads first. [`docs/index.md`](docs/index.md) routes to everything else: architecture, decisions, verified commands, and the active plan. This README is the human quickstart; those are the working documents.
+
 ## Two things worth knowing before reading the code
 
 **The job state machine is data, not control flow.** It lives in `packages/core/src/job-state.ts`. There is no `awaiting_preview` state: a job ends when the pull request is open, and a detached watcher edits the Discord message later if a preview deployment shows up. Waiting on someone else's build inside a job would hold a worker and a tenant concurrency slot for ten minutes.
