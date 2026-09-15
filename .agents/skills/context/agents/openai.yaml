@@ -1,0 +1,3 @@
+interface:
+  display_name: "Repository Context"
+  short_description: "Make a repo self-explaining to any coding agent"

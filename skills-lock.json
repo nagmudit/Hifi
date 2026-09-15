@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "context": {
+      "source": "nagmudit/skills",
+      "sourceType": "github",
+      "skillPath": "skills/context/SKILL.md",
+      "computedHash": "eab5d33393919ac0b69099f1c6ccfb75879d37e57ca96480484761f15b047535"
+    }
+  }
+}
