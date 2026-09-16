@@ -29,7 +29,7 @@ The repository is the source of truth. Start here and read only what your task t
 
 ## Decisions
 
-All four are accepted and all four constrain current work. Read ADR-002 and ADR-003 before building the worker.
+Four accepted, one proposed. Read ADR-002 and ADR-003 before building the worker, and ADR-005 before starting M4.
 
 | ADR | Decides | Read it when |
 |---|---|---|
@@ -37,6 +37,7 @@ All four are accepted and all four constrain current work. Read ADR-002 and ADR-
 | [ADR-002](architecture/decisions/ADR-002-model-proxy.md) | the model key goes to a proxy, not the agent | touching credentials, billing, or the agent interface |
 | [ADR-003](architecture/decisions/ADR-003-no-awaiting-preview-state.md) | a job ends when the pull request opens | touching the state machine or preview URLs |
 | [ADR-004](architecture/decisions/ADR-004-clarification-by-rerun.md) | a parked job resumes by re-running | touching clarification or concurrency accounting |
+| [ADR-005](architecture/decisions/ADR-005-multi-surface.md) | **proposed** - Slack and email alongside Discord, abstracted during M4 | touching tenant identity, users, or bindings |
 
 ## In flight
 

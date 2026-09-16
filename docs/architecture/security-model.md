@@ -29,6 +29,7 @@ Separately, the agent reads repository files, issue text, and screenshots, any o
 | S-9 | Per-tenant monthly spend cap with a hard stop and a Discord notification. | the model proxy, mid-run | proposed. See `ADR-002` |
 | S-10 | Rate limits per user and per channel. | bot | proposed, M6 |
 | S-11 | Webhook signatures verified for GitHub, Stripe, and Discord. Unsigned rejected. | `apps/api` | proposed, M4 |
+| S-12 | An inbound email request runs only from a verified, allowlisted sender. | email surface adapter | proposed, M7. See `ADR-005` |
 
 ## Credential handling
 
@@ -44,6 +45,16 @@ That splits the keys by role.
 An attacker who reaches the control plane or the database still cannot read a customer credential. Blobs carry a key version in their header so a keyring can hold several master keys at once and rotation does not require re-sealing everything at once.
 
 `Credential.ciphertext` is the only column in the schema permitted to hold key material.
+
+## Why email needs its own control
+
+Discord and Slack both tell us who wrote a message, and the binding is to a channel inside a workspace the customer controls. Authorisation is therefore a property of the surface, and we inherit it.
+
+Email inherits nothing. A sender address is a claim in a header, forgeable unless DKIM and SPF alignment are checked. An address is also guessable, and anyone who learns it is talking directly to a coding agent with write access to a private repository.
+
+So the email surface needs authorisation of its own: DKIM and SPF alignment verified on arrival, and an explicit per-binding sender allowlist rather than "anyone who can reach this address". An unverified or unlisted sender is dropped, and dropped quietly, because a bounce tells an attacker which addresses are real.
+
+This is the main reason email is scheduled last rather than alongside Slack.
 
 ## Two layers, never one
 

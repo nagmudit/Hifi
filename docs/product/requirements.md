@@ -64,6 +64,23 @@ Five steps, each resumable and independently revocable. A tenant is unusable unt
 
 R-35 is the training label for a learned router later. The logging is built first, deliberately.
 
+## Conversation surfaces
+
+Added 2026-09-16, after the original brief. Direction is decided; design is `proposed` in `ADR-005`. All of this is M7 except R-50, which belongs to M4.
+
+| ID | Requirement | Status |
+|---|---|---|
+| R-50 | Tenant identity, user identity, bindings, and jobs are keyed by surface plus external ID rather than by Discord IDs | proposed, M4 |
+| R-51 | A `Surface` adapter interface; the worker never imports a surface SDK | proposed, M4 |
+| R-52 | One human with accounts on two surfaces is one `User` with one role | proposed, M4 |
+| R-53 | Slack: request from a bound Slack channel produces the same job as Discord does | proposed, M7 |
+| R-54 | Slack arrives as signed HTTP events at the API, with no gateway process | proposed, M7 |
+| R-55 | Email: a request sent to a bound address produces a job, with one acknowledgement and one final report rather than an edited status message | proposed, M7 |
+| R-56 | Email sender identity is verified before a job runs; an unverified or unlisted sender is refused | proposed, M7 |
+| R-57 | One tenant may hold several surface accounts, and they share one worker machine and one quota | proposed, M4 |
+
+The reporting format is per surface by design: Discord embeds, Slack Block Kit, and HTML email. Only the result type is shared.
+
 ## Non-negotiable constraints
 
 These come from the brief marked as build failures if violated. Detail and current enforcement status in `docs/architecture/security-model.md`.
@@ -91,3 +108,4 @@ Ordered, and each one stops for confirmation before the next begins.
 | M4 | Multi-tenancy, sealed credentials, per-tenant machines, install flows, bindings. | not started |
 | M5 | Dashboard, onboarding wizard, Stripe subscription and metering. | not started |
 | M6 | Egress allowlist, log redaction, spend caps, rate limits, telemetry, runbooks. | not started |
+| M7 | Slack and email surfaces on top of the M4 abstraction. | not started |

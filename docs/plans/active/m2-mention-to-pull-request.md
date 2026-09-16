@@ -1,7 +1,7 @@
 ---
 status: active
 created: 2026-09-15
-last_updated: 2026-09-15
+last_updated: 2026-09-16
 areas: [apps/bot, apps/worker, packages/agent, packages/github]
 ---
 
@@ -68,6 +68,12 @@ Build the pipeline against the state machine that already exists, adding the enf
 ### 2026-09-15
 - Did: built the repository context system, Tier 2. No pipeline work yet.
 - Found: nothing in this plan is blocked by code. It is blocked on three external accounts.
+
+### 2026-09-16
+- Did: recorded the multi-surface direction as `ADR-005` and updated the product, architecture, and backlog docs. Still no pipeline work.
+- Found: Discord coupling lives almost entirely in the schema, seven columns across four models. In `packages/` it is comments, one `snowflake` schema, and one sentence of the agent preamble. `discord.js` is imported by one app. That is why the abstraction is scheduled for M4 rather than now.
+- Decided: M2 stays Discord-only and hardcoded. Generalising the surface before the first pull request exists would be optimising a pipeline that has never run.
+- Blocked: unchanged. The three open questions below.
 
 ## Decisions
 

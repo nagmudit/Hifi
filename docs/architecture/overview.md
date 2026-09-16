@@ -43,6 +43,14 @@ The bot writes the job row and the queue entry. The worker owns every state chan
 
 **The API is separate from the bot** because webhooks need horizontal scale and HTTP health checks, while the gateway needs exactly one instance. Combining them would force the worse constraint on both.
 
+## The surface boundary
+
+`apps/bot` is one way in, not the way in. Slack and email are planned, and the pipeline behind them is meant to be identical: a surface adapter turns an incoming request into a `Job` row and a queue entry, and turns a finished job back into whatever that surface can render.
+
+Nothing downstream of the queue should know which surface a job came from. That is true of the code today almost by accident, since `discord.js` appears in one app and nowhere else, and `ADR-005` is about making it true of the schema as well, during M4.
+
+The deployment shape is the part that genuinely differs. Discord needs a persistent gateway connection, which is why the bot is a separate always-on process that cannot scale horizontally. Slack events are signed HTTP and would land in `apps/api` with no new process at all.
+
 ## Storage
 
 | Store | Holds | Notes |

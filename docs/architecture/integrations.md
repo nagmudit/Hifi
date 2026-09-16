@@ -6,7 +6,7 @@ applies_to: [packages/github, packages/vercel, apps/api]
 
 # External Integrations
 
-Six external services. **None are implemented at M1.** This file records what each one is for, what it needs, and which milestone builds it, so the shape does not have to be re-derived from the brief.
+Eight external services. **None are implemented at M1.** This file records what each one is for, what it needs, and which milestone builds it, so the shape does not have to be re-derived from the brief.
 
 | Service | Purpose | Credential | Milestone |
 |---|---|---|---|
@@ -16,6 +16,8 @@ Six external services. **None are implemented at M1.** This file records what ea
 | Cloudflare R2 | attachments, screenshots, logs | account key | M2 |
 | Vercel | preview URLs | none by default | M3 |
 | Stripe | subscription and metered usage | account key | M5 |
+| Slack | second conversation surface | one shared app, per-workspace bot token | M7 |
+| Email | third conversation surface | none, on the hosted-inbox path | M7 |
 
 ## Discord
 
@@ -58,3 +60,23 @@ Attachments, screenshots, and full command output. Object keys are stored on the
 Subscription plus metered usage. Plans differ by monthly job quota and maximum concurrent jobs. Job completions are metered; quota exhaustion blocks new jobs with a Discord message pointing at the upgrade link.
 
 Webhook signature verification is mandatory, and delivery IDs are deduplicated through the `WebhookEvent` table because Stripe retries.
+
+## Slack
+
+Planned for M7, on top of the surface abstraction in `ADR-005`. One shared Slack app, installed per customer workspace, with a bot token stored the same way every other credential is.
+
+Architecturally it is easier than Discord, not harder. Slack delivers events as signed HTTP requests, so they arrive at `apps/api` and need no long-lived gateway process. That means no equivalent of `apps/bot` and no sharding problem.
+
+Two differences that matter. Slack expects an acknowledgement within three seconds or it retries the delivery, so the handler must enqueue and return, and the retry must be deduplicated through `WebhookEvent`. And Slack threads are keyed on the parent message timestamp rather than a thread object, so the status reference is a different shape from Discord's.
+
+Formatting is Block Kit rather than embeds. That is a separate renderer, deliberately.
+
+## Email
+
+Planned for M7 and the least settled of the three. `ADR-005` carries the open design question; the summary is that there are two paths and only one of them is cheap.
+
+**Hosted inbound address, preferred.** Customers send or forward to an address we own. No Google OAuth, no Gmail API, no app verification, and it works for every mail provider rather than Gmail alone.
+
+**Gmail API watch on the customer mailbox.** Needs Gmail restricted scopes, which as of the last review require Google app verification plus an annual third-party security assessment. Confirm the current rules before committing to this: it is a schedule risk measured in months.
+
+Whichever path, email breaks three assumptions the Discord design leans on. There is no channel, so a binding points at an address. There is no editable message, so progress cannot be shown in place and the job reports once at the end. And the sender is a claim rather than a fact, which is why sender verification is a hard requirement rather than a nicety. See control S-12.

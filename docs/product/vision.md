@@ -12,6 +12,18 @@ A coding agent that lives where the conversation already happens. A team member 
 
 The product is not the agent. Plenty of things run a coding agent. The product is the loop around it: the request arriving where people already talk, the safety rails that make an unattended agent acceptable against a real repository, and the reporting that makes the result reviewable without leaving Discord.
 
+## Surfaces
+
+Discord is where this starts, because it is where the target teams already talk. It is not meant to be the only way in.
+
+| Surface | Status |
+|---|---|
+| Discord | building, M2 |
+| Slack | planned, after multi-tenancy |
+| Email | planned, after Slack |
+
+The job pipeline is deliberately ignorant of where a request came from, so a surface is an adapter rather than a fork of the product. `ADR-005` records how that abstraction is meant to work and when it lands. Email is the awkward one: it has no channel, no editable status message, and a sender address that can be forged, so it is not simply Slack with different formatting.
+
 ## Who it is for
 
 Small product teams who already run their work in Discord and already deploy previews from pull requests. The person making the request is often not the person who would otherwise write the change: a designer, a founder, a support lead who knows exactly what is wrong with a page.

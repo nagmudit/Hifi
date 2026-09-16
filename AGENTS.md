@@ -2,6 +2,8 @@
 
 HiFi is a multi-tenant SaaS product. A customer installs a Discord bot, connects a GitHub organisation, and attaches their own model-provider API key. Anyone in a bound Discord channel can then tag the bot with a plain-English coding task and get back a pull request with tests, screenshots, and a preview link.
 
+Discord is the first surface, not the only one. Slack and email are planned, and the abstraction that makes them possible is scheduled for M4. Before you add a Discord-shaped column or a Discord-shaped concept, read `docs/architecture/decisions/ADR-005-multi-surface.md`.
+
 **Status: M1 of 6 complete.** The skeleton boots and the schema is migrated. There is no job pipeline yet. Most of this repository is interface and intent, so check the status marker on a document before assuming the thing it describes runs.
 
 ## Source of truth
