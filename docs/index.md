@@ -29,7 +29,7 @@ The repository is the source of truth. Start here and read only what your task t
 
 ## Decisions
 
-Five accepted, two proposed. Read ADR-002, ADR-003, and ADR-006 before building the worker, and ADR-005 and ADR-007 before starting M4.
+Seven accepted, one proposed. Read ADR-002, ADR-003, ADR-006, and ADR-008 before building the worker, and ADR-005 and ADR-007 before starting M4.
 
 | ADR | Decides | Read it when |
 |---|---|---|
@@ -39,7 +39,8 @@ Five accepted, two proposed. Read ADR-002, ADR-003, and ADR-006 before building 
 | [ADR-004](architecture/decisions/ADR-004-clarification-by-rerun.md) | a parked job resumes by re-running | touching clarification or concurrency accounting |
 | [ADR-005](architecture/decisions/ADR-005-multi-surface.md) | **proposed** - Slack and email alongside Discord, abstracted during M4 | touching tenant identity, users, or bindings |
 | [ADR-006](architecture/decisions/ADR-006-any-model-provider.md) | any model provider, through two wire protocols | touching the proxy, the router, keys, or pricing |
-| [ADR-007](architecture/decisions/ADR-007-sign-in-and-connections.md) | **proposed** - sign in with GitHub; every integration is a separate connection | touching sign-up, tenants, or onboarding |
+| [ADR-007](architecture/decisions/ADR-007-sign-in-and-connections.md) | sign in with GitHub; every integration is a separate connection | touching sign-up, tenants, or onboarding |
+| [ADR-008](architecture/decisions/ADR-008-budgets.md) | customer-configurable budgets per job, day, and month, enforced by the proxy | touching the proxy, spend, or anything that calls a model |
 
 ## Runbooks
 

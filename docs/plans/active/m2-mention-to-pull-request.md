@@ -64,6 +64,7 @@ Step 2 onward touches several packages and the credential path, so per `CLAUDE.m
 - [ ] Push and pull request against the fixture, proven without an agent
 - [ ] Redactor: a test for an OpenAI key, plus prefixes for the M3 providers
 - [ ] Loopback model proxy for the OpenAI protocol, with usage parsing, streaming included
+- [ ] Per-job token ceiling in the proxy from `M2_JOB_TOKEN_CEILING`, with output tokens clamped to the remaining budget. `ADR-008`
 - [ ] `OpenCodeEngine`
 - [ ] Bot message handler: thread, status message, enqueue
 - [ ] Worker pipeline through `reporting`, writing `JobEvent` on every transition
@@ -99,10 +100,14 @@ Kept here rather than in the fixture, because anything in the fixture is read by
 - Decided: OpenAI is the M2 provider, with a cheap model chosen from what the key can reach. Image attachments move to M3 so M2 needs no R2 credentials.
 - Ran: fixture `npm test`, 6 pass. Fixture `npm run build`, succeeds. HiFi `pnpm test` unchanged at 29 pass.
 - Blocked: on the user filling `.env`. Step 2 of the approach does not need it and can start now.
+- Decided, later the same day: the user accepted `ADR-007`, and asked for customer-configurable budgets, recorded as `ADR-008`. Its per-job token ceiling joins M2 because the proxy counts tokens anyway, and it protects the development key from the first run.
+- Did: filled `M2_REPO_FULL_NAME` and set `M2_JOB_TOKEN_CEILING` in the local `.env`, neither of which is secret. All other M2 credentials are still empty.
 
 ## Decisions
 
 **Model key goes to a loopback proxy, not the agent environment** - `ADR-002`. The engine takes `access`, not `apiKey`.
+
+**Budgets are enforced by the proxy, mid-run** - `ADR-008`. M2 implements only the per-job token ceiling, but counts atomically from the start so the workspace budgets in M3 extend it rather than replace it.
 
 **Any model provider, through two wire protocols** - `ADR-006`. M2 builds only the OpenAI side of the proxy, but builds it as a pass-through so the Anthropic side in M3 is a second parser, not a redesign.
 
@@ -119,7 +124,8 @@ Kept here rather than in the fixture, because anything in the fixture is read by
 ## Open questions
 
 1. **Credentials.** The user fills `.env` following `docs/runbooks/dev-credentials.md`: Discord bot, test server and channel IDs, the GitHub App and its installation ID, and an OpenAI key with a hard spend ceiling. Blocks approach step 3 onward.
-2. **`ADR-007`, sign in with GitHub.** Overrides the brief's Discord sign-in. Does not block M2, but must be accepted or rejected before M4.
+
+`ADR-007` was accepted on 2026-09-20 and is no longer open.
 
 ## Remaining
 
@@ -133,6 +139,7 @@ When the user says `.env` is filled, verify every M2 variable is set and the `.p
 - The pull request contains a real change matching the request, not a placeholder.
 - Re-running the same message produces no second pull request.
 - A deliberate attempt to push to `main` is refused by HiFi's own check, before GitHub's protection is ever reached.
+- A job given a tiny token ceiling is stopped by the proxy mid-run, reports what it spent, and opens no pull request.
 - The integration test passes with a stubbed engine.
 - A job that hangs is terminated by the watchdog rather than running forever.
 - The same flow has been tried once against a real repository, and whatever broke is written down.

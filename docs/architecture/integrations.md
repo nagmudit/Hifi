@@ -29,7 +29,7 @@ Attachment URLs are signed and expire. Download inside the handler, never persis
 
 ## GitHub
 
-One App, installed per customer account or organisation. To the customer this is "connect your GitHub": a GitHub consent screen where they choose which repositories HiFi may touch. It is deliberately not an OAuth app with `repo` scope, which would reach every repository the person can see and live until revoked. `ADR-007` has the comparison, and proposes the same App for dashboard sign-in. Permissions: Contents read/write, Pull requests read/write, Metadata read, Deployments read, Checks read. Subscribed events: `installation`, `installation_repositories`, `deployment_status`, `pull_request`.
+One App, installed per customer account or organisation. To the customer this is "connect your GitHub": a GitHub consent screen where they choose which repositories HiFi may touch. It is deliberately not an OAuth app with `repo` scope, which would reach every repository the person can see and live until revoked. `ADR-007` has the comparison, and makes the same App the dashboard sign-in. Permissions: Contents read/write, Pull requests read/write, Metadata read, Deployments read, Checks read. Subscribed events: `installation`, `installation_repositories`, `deployment_status`, `pull_request`.
 
 Installation tokens expire after an hour and are minted per job, never cached across jobs. Personal access tokens are never created or accepted anywhere in the product.
 

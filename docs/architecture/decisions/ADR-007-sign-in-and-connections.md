@@ -1,8 +1,8 @@
 # ADR-007: Sign in with GitHub; everything else is a connection
 
-**Status:** proposed - **Date:** 2026-09-20
+**Status:** accepted - **Date:** 2026-09-20 - accepted by the product owner the same day
 
-This overrides two fixed choices in the original brief: Discord OAuth as the dashboard identity provider, and one tenant per Discord guild. Nothing here is implemented.
+This overrides two fixed choices in the original brief: Discord OAuth as the dashboard identity provider, and one tenant per Discord guild. The override is deliberate and approved. Nothing here is implemented yet; it lands in M4.
 
 ## Context
 
@@ -54,7 +54,7 @@ The GitHub App column is also what controls R-42 and S-4 already require. A GitH
 
 ## Consequences
 
-**The brief's fixed decision on dashboard auth changes.** This ADR records the override. It should be accepted explicitly before M4 begins, not inferred.
+**The brief's fixed decision on dashboard auth changes.** This ADR records the override, and it was accepted explicitly rather than inferred. Where the original brief and this ADR disagree about sign-in or tenancy, this ADR wins.
 
 **Tenant creation moves** from the Discord install callback to sign-up. Installing the bot becomes a step inside an existing workspace rather than the event that creates one.
 

@@ -83,7 +83,7 @@ Claude models are supported through an Anthropic Console key, or through OpenRou
 
 ## Sign-in and connections
 
-Added 2026-09-20. `proposed` in `ADR-007`, which overrides the brief's choice of Discord as the dashboard identity provider and must be accepted explicitly before M4.
+Added 2026-09-20. Accepted in `ADR-007`, which overrides the brief's choice of Discord as the dashboard identity provider. Statuses below are `proposed` in the implementation sense: decided, not yet built.
 
 | ID | Requirement | Status |
 |---|---|---|
@@ -92,6 +92,23 @@ Added 2026-09-20. `proposed` in `ADR-007`, which overrides the brief's choice of
 | R-72 | GitHub, Discord, Slack, email, and each model provider are separate connections, each independently revocable | proposed, M4 to M7 |
 | R-73 | Repository access is a GitHub App installation with selected repositories, never an OAuth token with `repo` scope | proposed, M2 for development, M4 for customers |
 | R-74 | Someone who only makes requests in a bound channel needs no HiFi account | proposed, M4 |
+
+## Budgets
+
+Added 2026-09-20 at the product owner's request. Accepted in `ADR-008`. The customer sets limits in HiFi so an agent using their key cannot keep consuming tokens.
+
+| ID | Requirement | Status |
+|---|---|---|
+| R-80 | A per-job budget stops one runaway agent run mid-flight | proposed: token ceiling in M2, dollar budget in M3 |
+| R-81 | Daily and monthly budgets per workspace, set by the customer | proposed, enforced M3, configurable in the dashboard M5 |
+| R-82 | Optional per-user and per-channel budgets | proposed, M6 |
+| R-83 | Any budget can be set in dollars or in tokens; unknown model prices fall back to tokens | proposed, M3 |
+| R-84 | Budgets are enforced by the model proxy between model calls, not only checked at job start | proposed, M2 for the job ceiling |
+| R-85 | Concurrent jobs share budget counters atomically, so they cannot jointly overshoot | proposed, M3 |
+| R-86 | Each request's output is capped to what the remaining budget can pay for, bounding overshoot | proposed, M2 |
+| R-87 | Notifications at 50% and 80% of a period budget; a clear stop message at 100% with a link to the budget settings | proposed, M3 for messages, M5 for the link |
+| R-88 | A job stopped by a budget reports what it changed and spent, and never opens a pull request for a half-finished change | proposed, M2 |
+| R-89 | The dashboard shows spend against every budget, current period and history | proposed, M5 |
 
 ## Conversation surfaces
 
@@ -122,7 +139,7 @@ These come from the brief marked as build failures if violated. Detail and curre
 | R-43 | Never push to a protected branch, enforced in code as well as by GitHub branch protection |
 | R-44 | Repository contents, issue text, and screenshots are untrusted input, not instructions |
 | R-45 | Worker egress is allowlisted to the model provider, GitHub, the package registry, and object storage |
-| R-46 | Per-tenant monthly spend cap with a hard stop and a Discord notification |
+| R-46 | Per-tenant monthly spend cap with a hard stop and a notification. Extended into customer-configurable budgets by R-80 onward |
 | R-47 | Rate limits per user and per channel |
 
 ## Milestones

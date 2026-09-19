@@ -1,6 +1,6 @@
 # HiFi - Agent Instructions
 
-HiFi is a multi-tenant SaaS product. A customer installs a Discord bot, connects a GitHub organisation, and attaches their own model-provider API key. Anyone in a bound Discord channel can then tag the bot with a plain-English coding task and get back a pull request with tests, screenshots, and a preview link.
+HiFi is a multi-tenant SaaS product. A customer signs in with GitHub, connects the repositories HiFi may touch, adds the bot to their chat, and attaches their own model API key from any provider. Anyone in a bound Discord channel can then tag the bot with a plain-English coding task and get back a pull request with tests, screenshots, and a preview link.
 
 Discord is the first surface, not the only one. Slack and email are planned, and the abstraction that makes them possible is scheduled for M4. Before you add a Discord-shaped column or a Discord-shaped concept, read `docs/architecture/decisions/ADR-005-multi-surface.md`.
 

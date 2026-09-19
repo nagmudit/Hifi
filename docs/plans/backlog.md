@@ -21,11 +21,12 @@ Turns a working loop into a usable product.
 - The rules-based model router and the `ModelEntry` registry seed.
 - Anthropic and OpenRouter as first-class providers, each with a usage parser tested against recorded responses and a redactor prefix. `ADR-006`.
 - Image attachments: downloaded to R2 in the gateway handler, then the vision pre-pass. Moved here from M2 so M2 needs no R2 credentials.
+- **Budgets, enforced, per `ADR-008`.** Dollar budgets per job using registry prices, daily and monthly workspace budgets, shared atomic counters in Redis, 50% and 80% notifications, and refusal of new jobs at 100%. Configured from settings until the dashboard exists.
 
 ## M4 - Multi-tenancy
 
 - Tenant resolution from the surface account, replacing the hardcoded M2 configuration.
-- **Sign in with GitHub and the workspace model, per `ADR-007`,** if accepted. Must be decided before M4 starts, because it changes where a tenant is created.
+- **Sign in with GitHub and the workspace model, per `ADR-007`, accepted.** A tenant is created at sign-up, not by the Discord install callback, and every integration becomes a separately revocable connection.
 - **The surface abstraction, per `ADR-005`.** Tenant identity, user identity, bindings, and the four `discord*` job columns become surface plus external ID, and a `Surface` adapter interface goes in front of `discord.js`. Done here rather than at M7 because M4 rewrites these exact tables anyway, and because doing it afterwards means migrating live tenant data.
 - Sealed credential storage and the unseal path in the worker.
 - Per-tenant Fly Machines and volumes, created through the Machines API.
@@ -40,11 +41,12 @@ Turns a working loop into a usable product.
 - Custom OpenAI-compatible endpoints, with the server-side request forgery guard in control S-13 built before the field is exposed.
 - Job timeline rendered from `JobEvent`, and usage views.
 - Stripe subscription, metered job completions, quota enforcement with an upgrade link in Discord.
+- **Budget settings in the dashboard, per `ADR-008`:** per-job, daily, and monthly limits in dollars or tokens, and spend against each budget for the current period and history.
 
 ## M6 - Hardening
 
 - Egress allowlist on the worker.
-- Spend caps enforced by the model proxy.
+- Per-user and per-channel budgets, per `ADR-008`. The workspace and per-job budgets arrive earlier, in M3.
 - Rate limits per user and per channel.
 - OpenTelemetry traces spanning mention to pull request.
 - Runbooks for the three most likely on-call failures. Not before there is something to be on call for.

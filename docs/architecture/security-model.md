@@ -26,7 +26,7 @@ Separately, the agent reads repository files, issue text, and screenshots, any o
 | S-6 | Repository contents, issue text, and images are data, never instructions. | `AGENT_SYSTEM_PREAMBLE` plus hard checks | preamble written; checks proposed |
 | S-7 | The agent cannot change branch protection, alter its own permissions, modify CI workflow files, or open a pull request against a repo other than the bound one. | hard checks in the worker, **not** prompt instructions | proposed, M2 |
 | S-8 | Worker egress allowlisted to the model provider, GitHub, the package registry, and object storage. Per tenant, because a tenant with a custom endpoint adds exactly one host. | network policy | proposed, M6 |
-| S-9 | Per-tenant monthly spend cap with a hard stop and a Discord notification. Where a model's price is unknown, the cap is a token ceiling rather than a guessed dollar figure. | the model proxy, mid-run | proposed. See `ADR-002`, `ADR-006` |
+| S-9 | Customer-configurable budgets per job, per day, and per month, with a hard stop mid-run. Where a model's price is unknown, the budget is a token ceiling rather than a guessed dollar figure. | the model proxy, atomic counters in Redis | proposed: job ceiling M2, workspace budgets M3. See `ADR-008` |
 | S-10 | Rate limits per user and per channel. | bot | proposed, M6 |
 | S-11 | Webhook signatures verified for GitHub, Stripe, and Discord. Unsigned rejected. | `apps/api` | proposed, M4 |
 | S-12 | An inbound email request runs only from a verified, allowlisted sender. | email surface adapter | proposed, M7. See `ADR-005` |

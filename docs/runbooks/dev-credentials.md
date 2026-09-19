@@ -21,7 +21,8 @@ Everything needed to run HiFi end to end against the fixture repository, and how
 | `GITHUB_APP_ID` | your GitHub App settings page | no |
 | `GITHUB_APP_PRIVATE_KEY_PATH` | the `.pem` file GitHub downloads | the file is |
 | `M2_GITHUB_INSTALLATION_ID` | the URL after installing the App | no |
-| `M2_REPO_FULL_NAME` | already known: `nagmudit/hifi-fixture` | no |
+| `M2_REPO_FULL_NAME` | already filled in: `nagmudit/hifi-fixture` | no |
+| `M2_JOB_TOKEN_CEILING` | already filled in with a default; lower it to spend less per job | no |
 | `M2_MODEL_PROVIDER` | `openai` | no |
 | `M2_MODEL_API_KEY` | OpenAI platform, API keys | yes |
 | `M2_MODEL_ID` | leave blank; chosen from what your key can reach | no |
