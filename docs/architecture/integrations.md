@@ -12,7 +12,7 @@ Eight external services. **None are implemented at M1.** This file records what 
 |---|---|---|---|
 | Discord | the product surface | one shared application, bot token | M2 |
 | GitHub | repository access, pull requests, deployment events | one shared App, per-installation tokens | M2 |
-| Model provider | the coding agent itself | customer's own key, sealed | M2 |
+| Model providers | the coding agent itself, from any vendor | customer's own key, sealed | OpenAI M2, more from M3 |
 | Cloudflare R2 | attachments, screenshots, logs | account key | M2 |
 | Vercel | preview URLs | none by default | M3 |
 | Stripe | subscription and metered usage | account key | M5 |
@@ -21,7 +21,7 @@ Eight external services. **None are implemented at M1.** This file records what 
 
 ## Discord
 
-One application serves every tenant; customers install it into their guild. Scopes `bot` and `applications.commands`. Permissions: Send Messages, Create Public Threads, Send Messages in Threads, Read Message History, Attach Files, Embed Links. Server admins can rename the bot per guild for branding.
+One application serves every tenant; customers install it into their guild. Scopes `bot` and `applications.commands`. Permissions: View Channels, Send Messages, Create Public Threads, Send Messages in Threads, Read Message History, Attach Files, Embed Links, which is the integer `309237763072` in an invite URL. Server admins can rename the bot per guild for branding.
 
 `MessageContent` is a privileged intent and must be enabled in the developer portal. It requires verification once the bot is in more than 100 servers, which is a launch blocker worth scheduling early.
 
@@ -29,7 +29,7 @@ Attachment URLs are signed and expire. Download inside the handler, never persis
 
 ## GitHub
 
-One App, installed per customer organisation. Permissions: Contents read/write, Pull requests read/write, Metadata read, Deployments read, Checks read. Subscribed events: `installation`, `installation_repositories`, `deployment_status`, `pull_request`.
+One App, installed per customer account or organisation. To the customer this is "connect your GitHub": a GitHub consent screen where they choose which repositories HiFi may touch. It is deliberately not an OAuth app with `repo` scope, which would reach every repository the person can see and live until revoked. `ADR-007` has the comparison, and proposes the same App for dashboard sign-in. Permissions: Contents read/write, Pull requests read/write, Metadata read, Deployments read, Checks read. Subscribed events: `installation`, `installation_repositories`, `deployment_status`, `pull_request`.
 
 Installation tokens expire after an hour and are minted per job, never cached across jobs. Personal access tokens are never created or accepted anywhere in the product.
 
@@ -37,7 +37,18 @@ Installation tokens expire after an hour and are minted per job, never cached ac
 
 ## Model providers
 
-Three supported paths: an Anthropic Console API key, an OpenRouter key, or AWS Bedrock and Google Vertex credentials. Keys are validated with a cheap live call before saving and sealed immediately.
+Any vendor, by design. `ADR-006` has the reasoning; the short version is that two wire protocols cover almost the whole market, the Anthropic Messages API and the OpenAI API shape, and the proxy passes each through untranslated.
+
+| Tier | Providers | When |
+|---|---|---|
+| First-class | OpenAI | M2 |
+| First-class | Anthropic, OpenRouter | M3 |
+| Custom endpoint | anything OpenAI-compatible: Groq, Together, DeepSeek, Mistral, Fireworks, xAI, Google, and self-hosted servers reachable over the public internet | M5 |
+| Signed | AWS Bedrock, Google Vertex, Azure OpenAI | after M6 |
+
+A key is validated by listing the models it can reach, which costs no tokens and also tells us which model IDs are usable. Keys are sealed immediately after validation.
+
+A custom endpoint must be reachable from our workers over the public internet. A server on the customer's laptop or private network is not, and the base URL is checked against private address ranges before it is ever called. See control S-13.
 
 Claude Pro, Max, and Team subscription credentials do not work here. Subscription OAuth tokens are rejected by the Anthropic API for third-party integrations, so a key beginning `sk-ant-oat` is refused at onboarding with an explicit message. Implemented in `rejectionReason` and covered by tests.
 

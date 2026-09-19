@@ -40,12 +40,12 @@ Five steps, each resumable and independently revocable. A tenant is unusable unt
 |---|---|---|
 | R-20 | Install the Discord bot from one shared Discord application, scoped to the customer guild | proposed |
 | R-21 | Install the GitHub App from one shared app, with `state` carrying the tenant ID; sync the repository list on callback | proposed |
-| R-22 | Attach a model provider: Anthropic Console key, OpenRouter, or Bedrock/Vertex. Validate with a cheap live call, then seal immediately | proposed |
+| R-22 | Attach one or more model providers, from any vendor. Validate before saving, then seal immediately. Detail in R-60 onward and `ADR-006` | proposed |
 | R-23 | Bind Discord channels to repositories | proposed |
 | R-24 | Optionally attach Vercel; the default path needs no Vercel credential at all | proposed |
 | R-25 | Stripe Checkout subscription, metered job completions, quota enforcement with an upgrade link in Discord | proposed |
 
-**R-20 scopes:** `bot` and `applications.commands`. **Permissions:** Send Messages, Create Public Threads, Send Messages in Threads, Read Message History, Attach Files, Embed Links. A server admin can rename the bot per guild for branding.
+**R-20 scopes:** `bot` and `applications.commands`. **Permissions:** View Channels, Send Messages, Create Public Threads, Send Messages in Threads, Read Message History, Attach Files, Embed Links. A server admin can rename the bot per guild for branding. View Channels was missing from the original brief; without it the bot depends on the server's default role letting it see the channel.
 
 **R-21 permissions:** Contents read/write, Pull requests read/write, Metadata read, Deployments read, Checks read. **Webhook events:** `installation`, `installation_repositories`, `deployment_status`, `pull_request`.
 
@@ -63,6 +63,35 @@ Five steps, each resumable and independently revocable. A tenant is unusable unt
 | R-35 | Every job logs prompt, signals, model, tokens, cost, duration, test outcome, and later whether the pull request merged | partial | `Job` columns exist and are unwritten |
 
 R-35 is the training label for a learned router later. The logging is built first, deliberately.
+
+## Model providers
+
+Added 2026-09-20. Direction and design accepted in `ADR-006`.
+
+| ID | Requirement | Status |
+|---|---|---|
+| R-60 | No provider is privileged. Any vendor a customer brings is a supported configuration, not an exception | partial: code is provider-neutral in shape; nothing runs yet |
+| R-61 | OpenAI supported first-class | proposed, M2 |
+| R-62 | Anthropic and OpenRouter supported first-class | proposed, M3 |
+| R-63 | Any OpenAI-compatible endpoint, configured as base URL plus key plus model ID | proposed, M5 |
+| R-64 | Bedrock, Vertex, and Azure OpenAI, which need request signing or deployment URLs | proposed, after M6 |
+| R-65 | A key is validated by listing the models it can reach, which spends no tokens | proposed, M2 |
+| R-66 | A price is never invented. Unknown pricing is shown as unknown, and the spend cap falls back to a token ceiling | proposed, M3 |
+| R-67 | A tenant may hold keys for several providers at once, and the router may choose between them | proposed, M3 |
+
+Claude models are supported through an Anthropic Console key, or through OpenRouter, Bedrock, or Vertex. Claude subscription tokens remain refused; see the R-22 constraint above.
+
+## Sign-in and connections
+
+Added 2026-09-20. `proposed` in `ADR-007`, which overrides the brief's choice of Discord as the dashboard identity provider and must be accepted explicitly before M4.
+
+| ID | Requirement | Status |
+|---|---|---|
+| R-70 | The dashboard signs in with GitHub, through the same GitHub App that grants repository access | proposed, M4 |
+| R-71 | A tenant is a workspace created at sign-up, not a Discord guild | proposed, M4 |
+| R-72 | GitHub, Discord, Slack, email, and each model provider are separate connections, each independently revocable | proposed, M4 to M7 |
+| R-73 | Repository access is a GitHub App installation with selected repositories, never an OAuth token with `repo` scope | proposed, M2 for development, M4 for customers |
+| R-74 | Someone who only makes requests in a bound channel needs no HiFi account | proposed, M4 |
 
 ## Conversation surfaces
 

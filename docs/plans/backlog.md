@@ -19,10 +19,13 @@ Turns a working loop into a usable product.
 - Cancellation by slash command and by reaction.
 - Wall-clock timeout enforcement and the watchdog that moves an expired job to `timed_out`.
 - The rules-based model router and the `ModelEntry` registry seed.
+- Anthropic and OpenRouter as first-class providers, each with a usage parser tested against recorded responses and a redactor prefix. `ADR-006`.
+- Image attachments: downloaded to R2 in the gateway handler, then the vision pre-pass. Moved here from M2 so M2 needs no R2 credentials.
 
 ## M4 - Multi-tenancy
 
 - Tenant resolution from the surface account, replacing the hardcoded M2 configuration.
+- **Sign in with GitHub and the workspace model, per `ADR-007`,** if accepted. Must be decided before M4 starts, because it changes where a tenant is created.
 - **The surface abstraction, per `ADR-005`.** Tenant identity, user identity, bindings, and the four `discord*` job columns become surface plus external ID, and a `Surface` adapter interface goes in front of `discord.js`. Done here rather than at M7 because M4 rewrites these exact tables anyway, and because doing it afterwards means migrating live tenant data.
 - Sealed credential storage and the unseal path in the worker.
 - Per-tenant Fly Machines and volumes, created through the Machines API.
@@ -33,7 +36,8 @@ Turns a working loop into a usable product.
 ## M5 - Dashboard and billing
 
 - The five-step onboarding wizard, each step resumable and revocable.
-- Model provider validation with a live call, including the `sk-ant-oat` rejection in the UI.
+- Model provider connection for any vendor: validation by listing models, the `sk-ant-oat` rejection in the UI, several keys per tenant.
+- Custom OpenAI-compatible endpoints, with the server-side request forgery guard in control S-13 built before the field is exposed.
 - Job timeline rendered from `JobEvent`, and usage views.
 - Stripe subscription, metered job completions, quota enforcement with an upgrade link in Discord.
 
@@ -62,6 +66,10 @@ Only possible if M4 delivered the surface abstraction. If it did not, this miles
 - DKIM and SPF verification plus a per-binding sender allowlist, before any job runs. Control S-12.
 - One acknowledgement and one final report. There is no message to edit in place, so the whole progressive-status pattern does not apply.
 - HTML renderer for the report.
+
+## After M6 - Signed model providers
+
+AWS Bedrock, Google Vertex, and Azure OpenAI. Each needs the proxy to sign requests or build deployment URLs rather than swap a header, which is why they come after the simpler providers rather than alongside them. `ADR-006`.
 
 ## Not scheduled
 

@@ -29,7 +29,7 @@ The repository is the source of truth. Start here and read only what your task t
 
 ## Decisions
 
-Four accepted, one proposed. Read ADR-002 and ADR-003 before building the worker, and ADR-005 before starting M4.
+Five accepted, two proposed. Read ADR-002, ADR-003, and ADR-006 before building the worker, and ADR-005 and ADR-007 before starting M4.
 
 | ADR | Decides | Read it when |
 |---|---|---|
@@ -38,6 +38,14 @@ Four accepted, one proposed. Read ADR-002 and ADR-003 before building the worker
 | [ADR-003](architecture/decisions/ADR-003-no-awaiting-preview-state.md) | a job ends when the pull request opens | touching the state machine or preview URLs |
 | [ADR-004](architecture/decisions/ADR-004-clarification-by-rerun.md) | a parked job resumes by re-running | touching clarification or concurrency accounting |
 | [ADR-005](architecture/decisions/ADR-005-multi-surface.md) | **proposed** - Slack and email alongside Discord, abstracted during M4 | touching tenant identity, users, or bindings |
+| [ADR-006](architecture/decisions/ADR-006-any-model-provider.md) | any model provider, through two wire protocols | touching the proxy, the router, keys, or pricing |
+| [ADR-007](architecture/decisions/ADR-007-sign-in-and-connections.md) | **proposed** - sign in with GitHub; every integration is a separate connection | touching sign-up, tenants, or onboarding |
+
+## Runbooks
+
+| Doc | Read it when |
+|---|---|
+| [runbooks/dev-credentials.md](runbooks/dev-credentials.md) | setting up Discord, the GitHub App, and a model key for local development |
 
 ## In flight
 

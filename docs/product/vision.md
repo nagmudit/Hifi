@@ -44,7 +44,7 @@ Step 7 edits the message posted at step 2. The thread carries one status message
 
 ## Business shape
 
-Subscription with metered job usage. Customers bring their own model API key, so the marginal cost of a job is compute rather than inference. Plans differ by monthly job quota and maximum concurrent jobs.
+Subscription with metered job usage. Customers bring their own model API key from whichever provider they prefer, OpenAI, Anthropic, OpenRouter, or anything that speaks the OpenAI API, so the marginal cost of a job is compute rather than inference. Plans differ by monthly job quota and maximum concurrent jobs.
 
 That pricing model is why `docs/architecture/security-model.md` treats spend control as a correctness requirement rather than a nicety: a runaway agent loop spends the customer's money, not ours, which is a worse failure.
 

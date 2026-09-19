@@ -35,3 +35,5 @@ In exchange, `Job.tokensIn`, `tokensOut`, and `costMicroUsd` become trustworthy 
 ## Related
 
 `packages/agent/src/index.ts`, `packages/agent/README.md`, `docs/architecture/security-model.md` controls S-2 and S-9.
+
+`ADR-006`, added later, extends this proxy to every provider. It stays a pass-through: one per wire protocol, never translating between them.

@@ -20,16 +20,17 @@ Separately, the agent reads repository files, issue text, and screenshots, any o
 |---|---|---|---|
 | S-1 | One Fly Machine and one volume per tenant. Mirrors, caches, credentials, and worktrees never shared across tenants. Within a tenant, jobs may share, which is accepted because it is all one customer's own code. | infrastructure | proposed, M4. See `ADR-001` |
 | S-2 | Credentials never at rest as plaintext. Unsealed into worker memory at job start only. | `packages/crypto` | sealing done and tested; nothing stores a credential yet |
-| S-3 | Log redactor scrubs known key prefixes as a last line of defence. | `redactSecrets`, wired into `createLogger` | done and tested |
+| S-3 | Log redactor scrubs known key prefixes as a last line of defence. Gains a prefix for each first-class provider as it lands. | `redactSecrets`, wired into `createLogger` | done. Prefixes cover OpenAI, OpenRouter, Anthropic, and GitHub; tests exercise all but OpenAI |
 | S-4 | GitHub tokens minted per job from the App installation, never cached, never a personal access token. | `packages/github` | proposed, M2 |
 | S-5 | Never push to a default or protected branch. | hard check in the worker, plus customer-side branch protection | proposed, M2 |
 | S-6 | Repository contents, issue text, and images are data, never instructions. | `AGENT_SYSTEM_PREAMBLE` plus hard checks | preamble written; checks proposed |
 | S-7 | The agent cannot change branch protection, alter its own permissions, modify CI workflow files, or open a pull request against a repo other than the bound one. | hard checks in the worker, **not** prompt instructions | proposed, M2 |
-| S-8 | Worker egress allowlisted to the model provider, GitHub, the package registry, and object storage. | network policy | proposed, M6 |
-| S-9 | Per-tenant monthly spend cap with a hard stop and a Discord notification. | the model proxy, mid-run | proposed. See `ADR-002` |
+| S-8 | Worker egress allowlisted to the model provider, GitHub, the package registry, and object storage. Per tenant, because a tenant with a custom endpoint adds exactly one host. | network policy | proposed, M6 |
+| S-9 | Per-tenant monthly spend cap with a hard stop and a Discord notification. Where a model's price is unknown, the cap is a token ceiling rather than a guessed dollar figure. | the model proxy, mid-run | proposed. See `ADR-002`, `ADR-006` |
 | S-10 | Rate limits per user and per channel. | bot | proposed, M6 |
 | S-11 | Webhook signatures verified for GitHub, Stripe, and Discord. Unsigned rejected. | `apps/api` | proposed, M4 |
 | S-12 | An inbound email request runs only from a verified, allowlisted sender. | email surface adapter | proposed, M7. See `ADR-005` |
+| S-13 | A custom model endpoint is HTTPS only, resolves to a public address, and is pinned to that address for the request. | model proxy and onboarding validation | proposed, M5. See `ADR-006` |
 
 ## Credential handling
 
@@ -45,6 +46,14 @@ That splits the keys by role.
 An attacker who reaches the control plane or the database still cannot read a customer credential. Blobs carry a key version in their header so a keyring can hold several master keys at once and rotation does not require re-sealing everything at once.
 
 `Credential.ciphertext` is the only column in the schema permitted to hold key material.
+
+## Why a custom endpoint needs its own control
+
+Letting a customer supply a base URL means our proxy makes an HTTP request to an address the customer chose, from inside our infrastructure. Point it at a cloud metadata address, a loopback port, or a private-network hostname, and the customer is using HiFi to reach things only HiFi can reach. That is server-side request forgery.
+
+The guard has three parts, and all three are needed. HTTPS only. The hostname is resolved and every resulting address checked against private, loopback, and link-local ranges. And the connection is made to the address that was checked, not re-resolved, because otherwise a hostname can answer the check with a public address and the real request with a private one.
+
+A consequence customers will notice: a model server on a laptop or a private network cannot be used. That is correct, not a limitation to engineer around.
 
 ## Why email needs its own control
 

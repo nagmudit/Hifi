@@ -72,6 +72,7 @@ Full reasoning in `docs/architecture/repository-map.md`, including the surprises
 - Imports between workspace packages use the package name and `.js` extensions on relative paths. NodeNext resolution means `./foo.js` in source refers to `./foo.ts`.
 - Never redeclare a Prisma enum. Import `JobStatus`, `FailureCode` and the rest from `@hifi/db`.
 - Every job status change goes through `assertTransition` in `packages/core/src/job-state.ts`. The state machine is data, not scattered `if` statements.
+- Never assume a model provider. `provider` is a free string everywhere, and provider-specific behaviour lives only in the model proxy. `ADR-006`.
 - Money is integer micro-USD. Per-job costs are `Int`, tenant period totals are `BigInt`. Never floats.
 - Zod parses everything crossing a trust boundary: queue payloads, webhooks, Discord input, agent output.
 - Every external call gets a timeout and a bounded retry with jitter.
