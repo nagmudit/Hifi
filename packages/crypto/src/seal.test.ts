@@ -113,6 +113,15 @@ describe("redaction", () => {
     }
   });
 
+  it("scrubs OpenAI keys, both the project and the classic shapes", () => {
+    for (const key of ["sk-proj-" + "a".repeat(48), "sk-" + "b".repeat(48)]) {
+      const line = `calling the model with ${key}`;
+      expect(redactString(line)).not.toContain(key);
+      expect(redactString(line)).toContain("[redacted]");
+      expect(containsSecret(key)).toBe(true);
+    }
+  });
+
   it("scrubs private key blocks", () => {
     const pem = "-----BEGIN RSA PRIVATE KEY-----\nabcdef\n-----END RSA PRIVATE KEY-----";
     expect(redactString(pem)).not.toContain("abcdef");

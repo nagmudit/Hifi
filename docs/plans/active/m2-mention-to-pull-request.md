@@ -64,14 +64,14 @@ Step 2 onward touches several packages and the credential path, so per `CLAUDE.m
 - [x] Mirror, worktree, branch plumbing, tested against a local bare repository
 - [x] GitHub App: installation token minting against the real fixture
 - [x] Push and pull request against the fixture, proven without an agent
-- [ ] Redactor: a test for an OpenAI key, plus prefixes for the M3 providers
+- [x] Redactor: a test for an OpenAI key. Prefixes for the other M3 providers land with those providers
 - [x] Loopback model proxy for the OpenAI protocol, with usage parsing, streaming included
 - [x] Per-job token ceiling in the proxy from `M2_JOB_TOKEN_CEILING`, with output tokens clamped to the remaining budget. `ADR-008`
 - [x] `OpenCodeEngine`
-- [ ] Bot message handler: thread, status message, enqueue
+- [x] Bot message handler: thread, status message, enqueue
 - [x] Worker pipeline through `reporting`, writing `JobEvent` on every transition
 - [x] Integration test with a stubbed engine
-- [ ] Job deadline and the watchdog that enforces it
+- [x] Job deadline and the watchdog that enforces it
 
 ## Test prompts for the fixture
 
@@ -130,6 +130,15 @@ Kept here rather than in the fixture, because anything in the fixture is read by
 - Fixed after reading the first pull request: the title truncated mid-word, and the agent's summary offered to commit and open a pull request that HiFi had already opened. The preamble now tells the agent that pushing is handled for it.
 - Decided: status travels worker to bot over Redis pub/sub rather than the worker calling Discord. The worker runs the customer's install scripts, so a bot token in that process would be readable by any postinstall hook, which is ADR-002's argument applied to a second credential.
 - Note: cost is reported as unknown rather than guessed, because no price is recorded for `gpt-5-mini`. That is ADR-006 working as intended, and M3's registry fills it in.
+
+### 2026-09-20, chunk C
+
+- Did: built the Discord loop. The mention handler creates the thread, writes the Job row, and enqueues; the status subscriber edits one status message in place and mentions the requester once at the end.
+- Did: wall-clock enforcement in two places. A running job aborts itself through an AbortController passed to the engine, and the watchdog sweeps only orphans left by a dead worker, after a grace period so the two cannot fight.
+- Ran: `pnpm test:env`, 79 pass, up from 74.
+- Verified: `Events.ClientReady` really is `clientReady` in discord.js 14.27, checked against the installed package rather than memory. The M1 code used that name but had never actually connected.
+- Note: a timed-out job reaches `timed_out`, not `failed`, so the difference between "we stopped it" and "it broke" survives into the report.
+- Remaining: a human has to post the first mention, because the handler ignores messages from bots and weakening that guard for a test would be the wrong trade.
 
 ## Decisions
 

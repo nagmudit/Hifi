@@ -127,6 +127,11 @@ export async function runJob(jobId: string, deps: PipelineDeps): Promise<Pipelin
   let worktree: WorktreeRef | undefined;
   let proxy: ModelProxy | undefined;
 
+  // The job enforces its own wall clock. The watchdog in index.ts only exists
+  // for jobs whose worker died and can no longer enforce anything.
+  const deadline = new AbortController();
+  const deadlineTimer = setTimeout(() => deadline.abort(), deps.config.jobWallClockMs);
+
   try {
     await prisma.job.update({
       where: { id: jobId },
@@ -226,6 +231,7 @@ export async function runJob(jobId: string, deps: PipelineDeps): Promise<Pipelin
       access: { baseUrl: proxy.baseUrl, token: proxy.token },
       maxTurns: MAX_AGENT_TURNS,
       timeoutMs: deps.config.agentTimeoutMs,
+      signal: deadline.signal,
       onEvent: (event) => {
         if (event.type === "message") {
           void note(JobEventType.agent_message, event.text).catch(() => undefined);
@@ -246,6 +252,13 @@ export async function runJob(jobId: string, deps: PipelineDeps): Promise<Pipelin
         modelSelection: model as unknown as object,
       },
     });
+
+    if (deadline.signal.aborted) {
+      throw new HifiError(
+        FailureCode.wall_clock_timeout,
+        `the job passed its ${Math.round(deps.config.jobWallClockMs / 1000)}s wall clock`,
+      );
+    }
 
     if (result.outcome === "error") {
       const budgetHit = proxy.exceeded();
@@ -313,9 +326,12 @@ export async function runJob(jobId: string, deps: PipelineDeps): Promise<Pipelin
     const error = toHifiError(err);
     log.error({ err: error, code: error.code }, "job failed");
 
+    const terminal =
+      error.code === FailureCode.wall_clock_timeout ? JobStatus.timed_out : JobStatus.failed;
+
     if (status !== JobStatus.failed && status !== JobStatus.succeeded) {
       try {
-        await advance(JobStatus.failed, error.userMessage);
+        await advance(terminal, error.userMessage);
       } catch {
         // An illegal transition must not mask the original failure.
       }
@@ -337,8 +353,9 @@ export async function runJob(jobId: string, deps: PipelineDeps): Promise<Pipelin
       },
     });
 
-    return { status: JobStatus.failed, failure: error.userMessage };
+    return { status: terminal, failure: error.userMessage };
   } finally {
+    clearTimeout(deadlineTimer);
     // The worktree never survives the job. The mirror always does.
     if (worktree) await removeWorktree(worktree);
     if (proxy) await proxy.close();

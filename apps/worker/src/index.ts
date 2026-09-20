@@ -13,6 +13,7 @@ import { Worker, type Job as BullJob } from "bullmq";
 import { loadWorkerConfig } from "./env.js";
 import { runJob } from "./pipeline.js";
 import { STATUS_CHANNEL } from "./status.js";
+import { startWatchdog } from "./watchdog.js";
 
 const log = createLogger({ service: "worker" });
 const config = loadWorkerConfig();
@@ -27,6 +28,13 @@ const engine = new OpenCodeEngine({ binPath: config.opencodeBin });
 // putting a bot token in the process that runs the customer's code.
 const publisher = createRedis();
 
+const publishStatus = (update: { jobId: string; status: string; detail?: string }) => {
+  void publisher.publish(STATUS_CHANNEL, JSON.stringify(update));
+};
+
+// Catches jobs whose worker died. A live job enforces its own wall clock.
+startWatchdog({ logger: log, onStatus: publishStatus });
+
 const worker = new Worker(
   QUEUE_NAME,
   async (job: BullJob) => {
@@ -35,9 +43,7 @@ const worker = new Worker(
       engine,
       config,
       logger: log,
-      onStatus: (update) => {
-        void publisher.publish(STATUS_CHANNEL, JSON.stringify(update));
-      },
+      onStatus: publishStatus,
     });
     // A failed job is reported, not thrown: the failure is already recorded on
     // the job row, and throwing would only trigger a retry we do not want yet.
