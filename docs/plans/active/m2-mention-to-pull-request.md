@@ -57,11 +57,11 @@ Step 2 onward touches several packages and the credential path, so per `CLAUDE.m
 
 - [x] Fixture repository created and pushed
 - [x] Fixture `main` protected
-- [ ] Development credentials in `.env`, per `docs/runbooks/dev-credentials.md`
-- [ ] Branch safety check, with unit tests for the refusal paths
-- [ ] Mirror, worktree, branch plumbing, tested against a local bare repository
-- [ ] GitHub App: installation token minting against the real fixture
-- [ ] Push and pull request against the fixture, proven without an agent
+- [x] Development credentials in `.env`, per `docs/runbooks/dev-credentials.md`
+- [x] Branch safety check, with unit tests for the refusal paths
+- [x] Mirror, worktree, branch plumbing, tested against a local bare repository
+- [x] GitHub App: installation token minting against the real fixture
+- [x] Push and pull request against the fixture, proven without an agent
 - [ ] Redactor: a test for an OpenAI key, plus prefixes for the M3 providers
 - [ ] Loopback model proxy for the OpenAI protocol, with usage parsing, streaming included
 - [ ] Per-job token ceiling in the proxy from `M2_JOB_TOKEN_CEILING`, with output tokens clamped to the remaining budget. `ADR-008`
@@ -102,6 +102,16 @@ Kept here rather than in the fixture, because anything in the fixture is read by
 - Blocked: on the user filling `.env`. Step 2 of the approach does not need it and can start now.
 - Decided, later the same day: the user accepted `ADR-007`, and asked for customer-configurable budgets, recorded as `ADR-008`. Its per-job token ceiling joins M2 because the proxy counts tokens anyway, and it protects the development key from the first run.
 - Did: filled `M2_REPO_FULL_NAME` and set `M2_JOB_TOKEN_CEILING` in the local `.env`, neither of which is secret. All other M2 credentials are still empty.
+
+### 2026-09-20, later: chunk A
+
+- Did: implemented `packages/github`. App authentication, an HTTP wrapper giving every GitHub call a timeout and a jittered retry, the branch-safety check, git mirror and worktree plumbing, and pull request operations.
+- Decided: the installation token is injected into git through `GIT_CONFIG_COUNT` environment variables rather than the remote URL or `-c`. A token in the URL is written into the mirror config and leaks into error output; a token in `-c` is visible in the process list. Neither is acceptable on a machine that also runs the customer's install scripts.
+- Found: `git clone --mirror` sets `remote.origin.mirror`, which a worktree inherits, and git then refuses **any** push carrying a refspec. Caught by the local-bare-repo test, and it would have failed identically in production. Fixed by overriding the setting per push rather than mutating the mirror.
+- Found: error messages said `git -c failed` whenever a command used `-c`, which also affected commits. Messages now report the real subcommand.
+- Ran: `pnpm test`, 51 pass, up from 29. `pnpm typecheck` clean.
+- Ran: the chunk A proof against the real fixture. Minted a token, mirrored, branched, committed a hand-written fix for the seeded typo, pushed, opened pull request #1, confirmed the idempotency lookup finds it, then closed the pull request and deleted the branch. Branch safety refused `main` and `feature/whatever`; the cross-repository guard refused a pull request against another repository.
+- Found: the App can read the fixture's protected branch list, which returns `main`. The second opinion is available, not just the prefix rule.
 
 ## Decisions
 

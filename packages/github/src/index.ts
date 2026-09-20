@@ -1,35 +1,16 @@
 /**
- * GitHub App authentication, mirror management, and branch and pull request
- * operations. Implemented in M2.
+ * GitHub App authentication, bare mirrors, worktrees, branches, and pull
+ * requests.
  *
  * Invariants this package owns, all enforced in code rather than by prompt:
  *   - installation tokens are minted per job and never cached across jobs
  *   - a personal access token is never created or accepted
  *   - a push to the default branch, or to any protected branch, is refused
- *   - a pull request may only target the repository bound to the channel
+ *   - a pull request may only target the repository bound to the request
  */
 
-export interface InstallationToken {
-  token: string;
-  expiresAt: Date;
-  installationId: number;
-}
-
-export interface BranchSafetyInput {
-  targetBranch: string;
-  defaultBranch: string;
-  protectedBranches: string[];
-}
-
-export interface MirrorRef {
-  repoFullName: string;
-  mirrorPath: string;
-  lastFetchedAt: Date | null;
-}
-
-export interface WorktreeRef {
-  jobId: string;
-  path: string;
-  branch: string;
-  baseSha: string;
-}
+export * from "./auth.js";
+export * from "./branch-safety.js";
+export * from "./git.js";
+export * from "./http.js";
+export * from "./pulls.js";
