@@ -4,3 +4,4 @@ export * from "./job-state.js";
 export * from "./logger.js";
 export * from "./redis.js";
 export * from "./schemas.js";
+export * from "./m2-context.js";

@@ -19,10 +19,12 @@ Verified on 2026-09-20.
 
 - **The fixture exists.** `nagmudit/hifi-fixture`, private, at <https://github.com/nagmudit/hifi-fixture>. A small Next.js site called Acme Notes with a pricing page and a Vitest suite. Local clone at `C:\Mudit\Projects\hifi-fixture`. `npm test` passes 6 tests and `npm run build` succeeds.
 - **The fixture's `main` is protected:** one approving review required, force pushes and deletions blocked, admins not enforced so the owner can still push.
-- `apps/bot` connects to the Discord gateway and does nothing else. Without `DISCORD_BOT_TOKEN` it logs a warning and exits 0.
-- `apps/worker` consumes from `hifi-jobs`, validates the payload with Zod, and throws `job pipeline not implemented (M2)`.
-- `packages/agent` and `packages/github` are interfaces with no implementation.
-- The job state machine and credential sealing are implemented and tested. Nothing calls them.
+- **The pipeline works end to end without Discord.** `pnpm --filter @hifi/worker enqueue "<request>"` puts a real job on the queue; the worker takes it from `claimed` to `succeeded` and opens a pull request. Proven twice against the fixture, pull requests #2 and #3.
+- `packages/github` is implemented: App authentication, mirrors, worktrees, branch safety, push, pull requests.
+- `packages/agent` ships `OpenCodeEngine`, driving the CLI headlessly through the loopback proxy.
+- `apps/worker` runs the state machine, the model proxy, and the per-job token ceiling.
+- `apps/bot` still only connects to the Discord gateway. Without `DISCORD_BOT_TOKEN` it logs a warning and exits 0. **This is the remaining gap: chunk C.**
+- Nothing writes to Discord yet, and no job deadline is enforced.
 - The code is provider-neutral in shape. `provider` is a free string everywhere; the only Anthropic-specific code is the redactor list and the Claude subscription-token refusal, which stays.
 
 ## Desired behaviour
@@ -63,12 +65,12 @@ Step 2 onward touches several packages and the credential path, so per `CLAUDE.m
 - [x] GitHub App: installation token minting against the real fixture
 - [x] Push and pull request against the fixture, proven without an agent
 - [ ] Redactor: a test for an OpenAI key, plus prefixes for the M3 providers
-- [ ] Loopback model proxy for the OpenAI protocol, with usage parsing, streaming included
-- [ ] Per-job token ceiling in the proxy from `M2_JOB_TOKEN_CEILING`, with output tokens clamped to the remaining budget. `ADR-008`
-- [ ] `OpenCodeEngine`
+- [x] Loopback model proxy for the OpenAI protocol, with usage parsing, streaming included
+- [x] Per-job token ceiling in the proxy from `M2_JOB_TOKEN_CEILING`, with output tokens clamped to the remaining budget. `ADR-008`
+- [x] `OpenCodeEngine`
 - [ ] Bot message handler: thread, status message, enqueue
-- [ ] Worker pipeline through `reporting`, writing `JobEvent` on every transition
-- [ ] Integration test with a stubbed engine
+- [x] Worker pipeline through `reporting`, writing `JobEvent` on every transition
+- [x] Integration test with a stubbed engine
 - [ ] Job deadline and the watchdog that enforces it
 
 ## Test prompts for the fixture
@@ -112,6 +114,22 @@ Kept here rather than in the fixture, because anything in the fixture is read by
 - Ran: `pnpm test`, 51 pass, up from 29. `pnpm typecheck` clean.
 - Ran: the chunk A proof against the real fixture. Minted a token, mirrored, branched, committed a hand-written fix for the seeded typo, pushed, opened pull request #1, confirmed the idempotency lookup finds it, then closed the pull request and deleted the branch. Branch safety refused `main` and `feature/whatever`; the cross-repository guard refused a pull request against another repository.
 - Found: the App can read the fixture's protected branch list, which returns `main`. The second opinion is available, not just the prefix rule.
+
+### 2026-09-20, later still: chunk B
+
+- Did: built the model proxy, the OpenCode engine, and the worker pipeline. A job now runs from a queue entry to a pull request with no Discord involved.
+- Ran: `pnpm test:env`, 74 pass, up from 51. Two real jobs against the fixture, producing pull requests #2 and #3, both left open for review.
+- Found, by running the CLI rather than trusting the docs, four things that each blocked the run completely:
+  - **stdin must be closed.** With an open pipe OpenCode hangs forever after init, with no output and no error. This cost the most time to find.
+  - **`--dir` must be passed explicitly.** Without it the session resolves against the wrong project and reports the configured model as not found, even though `opencode models` lists it.
+  - **the binary is a native executable**, so it is spawned directly. Windows refuses to spawn the `.CMD` shim without a shell.
+  - **the config file is written into the working tree**, so the engine deletes it afterwards or it lands in the customer's commit.
+- Found: gpt-5 models reject `max_tokens` and require `max_completion_tokens`, while most OpenAI-compatible servers accept only the older spelling. The proxy renames it as a per-provider quirk rather than a blanket rewrite, which would break the compatible ones.
+- Found: the proxy's upstream base already ends in `/v1`, so the engine's base URL must be the proxy root. Getting this wrong produced a 404 from the provider rather than anything informative.
+- Found: `prisma generate` fails with `EPERM` on Windows while the worker is running, because it holds the query engine open. Added to the commands gotchas.
+- Fixed after reading the first pull request: the title truncated mid-word, and the agent's summary offered to commit and open a pull request that HiFi had already opened. The preamble now tells the agent that pushing is handled for it.
+- Decided: status travels worker to bot over Redis pub/sub rather than the worker calling Discord. The worker runs the customer's install scripts, so a bot token in that process would be readable by any postinstall hook, which is ADR-002's argument applied to a second credential.
+- Note: cost is reported as unknown rather than guessed, because no price is recorded for `gpt-5-mini`. That is ADR-006 working as intended, and M3's registry fills it in.
 
 ## Decisions
 

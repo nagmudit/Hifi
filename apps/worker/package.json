@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "dev": "dotenv -e ../../.env -- tsx watch src/index.ts",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "enqueue": "dotenv -e ../../.env -- tsx dev-enqueue.mts"
   },
   "dependencies": {
     "@hifi/agent": "workspace:*",
@@ -19,6 +20,7 @@
     "@hifi/router": "workspace:*",
     "bullmq": "^5.34.5",
     "ioredis": "^5.4.2",
+    "opencode-ai": "1.18.31",
     "zod": "^3.24.1"
   },
   "devDependencies": {

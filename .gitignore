@@ -18,3 +18,4 @@ Thumbs.db
 # local agent scratch
 /work/
 /mirrors/
+.hifi-data/

@@ -1,3 +1,4 @@
+import { OpenCodeEngine } from "@hifi/agent";
 import {
   createLogger,
   createRedis,
@@ -9,44 +10,53 @@ import {
 import { disconnectDb, pingDb } from "@hifi/db";
 import { Worker, type Job as BullJob } from "bullmq";
 
-/**
- * M1: the worker connects, claims nothing, and proves the queue wiring is real.
- * The job pipeline lands in M2.
- */
+import { loadWorkerConfig } from "./env.js";
+import { runJob } from "./pipeline.js";
+import { STATUS_CHANNEL } from "./status.js";
+
 const log = createLogger({ service: "worker" });
+const config = loadWorkerConfig();
 
 await pingDb();
-log.info("postgres reachable");
-
 const connection = createRedis();
 await connection.ping();
-log.info({ queue: QUEUE_NAME }, "redis reachable");
+log.info({ queue: QUEUE_NAME, repo: config.repoFullName }, "worker starting");
+
+const engine = new OpenCodeEngine({ binPath: config.opencodeBin });
+// The bot owns every Discord write, so status travels over Redis rather than
+// putting a bot token in the process that runs the customer's code.
+const publisher = createRedis();
 
 const worker = new Worker(
   QUEUE_NAME,
   async (job: BullJob) => {
     const payload = jobQueuePayload.parse(job.data);
-    log.warn(
-      { jobId: payload.jobId, tenantId: payload.tenantId },
-      "job received but the pipeline is not implemented until M2",
-    );
-    throw new Error("job pipeline not implemented (M2)");
+    const result = await runJob(payload.jobId, {
+      engine,
+      config,
+      logger: log,
+      onStatus: (update) => {
+        void publisher.publish(STATUS_CHANNEL, JSON.stringify(update));
+      },
+    });
+    // A failed job is reported, not thrown: the failure is already recorded on
+    // the job row, and throwing would only trigger a retry we do not want yet.
+    return result;
   },
   {
     connection: { url: redisUrl(), ...redisOptions() },
     concurrency: 1,
-    // Retries are bounded with jitter everywhere in this product.
-    settings: { backoffStrategy: (attempts: number) => Math.min(attempts * 5_000, 60_000) },
+    settings: {
+      backoffStrategy: (attempts: number) => Math.min(attempts * 5_000, 60_000),
+    },
   },
 );
 
 worker.on("failed", (job, err) => {
-  log.error({ jobId: job?.data?.jobId, err }, "job failed");
+  log.error({ jobId: job?.data?.jobId, err }, "job threw");
 });
 
-worker.on("ready", () => {
-  log.info("worker ready");
-});
+worker.on("ready", () => log.info("worker ready"));
 
 let shuttingDown = false;
 
@@ -54,9 +64,9 @@ async function shutdown(signal: string): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
   log.info({ signal }, "shutting down");
-  // Let an in-flight job finish rather than orphaning a worktree.
   await worker.close();
   connection.disconnect();
+  publisher.disconnect();
   await disconnectDb();
   process.exit(0);
 }

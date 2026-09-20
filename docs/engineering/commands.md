@@ -19,7 +19,9 @@ Verified column says how the claim was checked. "ran" means executed in this rep
 | Generate Prisma client | `pnpm db:generate` | ran as part of build |
 | Prisma Studio | `pnpm db:studio` | in package.json, not run |
 | Build everything | `pnpm build` | ran, all 12 projects |
-| Test | `pnpm test` | ran, 29 pass in 2 files |
+| Test | `pnpm test` | ran, 67 pass; the pipeline suite skips without a database |
+| Test, with `.env` loaded | `pnpm test:env` | ran, 74 pass including the pipeline suite |
+| Queue a job without Discord | `pnpm --filter @hifi/worker enqueue "<request>"` | ran, opened a real pull request |
 | Test, watch | `pnpm test:watch` | in package.json, not run |
 | Typecheck | `pnpm typecheck` | ran, clean |
 | Lint | `pnpm lint` | ran, **fails**: no package defines a lint script |
@@ -54,6 +56,7 @@ Deliberately unusual, because the common ones were already taken on the developm
 - **pnpm 10 blocks build scripts by default.** Prisma and esbuild need theirs. The allowlist is the `pnpm.onlyBuiltDependencies` field in the root `package.json`. A fresh clone that skips it will install without a Prisma engine.
 - **BullMQ rejects a colon in a queue name.** The queue is `hifi-jobs`.
 - **Redis must run with `noeviction`.** The compose file sets it. A queue whose keys can be evicted loses jobs silently.
+- **`prisma generate` fails with `EPERM` on Windows while anything using the client is running.** The worker holds the query engine open, so stop it before building. `pnpm build` runs `prisma generate` as part of `@hifi/db`.
 - **The first build is slow** because Prisma generates its client as part of `@hifi/db`'s build step.
 
 ## Verifying a change end to end
