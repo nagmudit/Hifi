@@ -27,7 +27,21 @@ Everything needed to run HiFi end to end against the fixture repository, and how
 | `M2_MODEL_API_KEY` | OpenAI platform, API keys | yes |
 | `M2_MODEL_ID` | leave blank; chosen from what your key can reach | no |
 
-**Not needed yet,** so skip them: the Discord public key and client secret, GitHub webhook secret and client credentials, R2, and Stripe. Each is listed in `.env.example` with the milestone that needs it.
+The GitHub App's private key is the `.pem` file, and it is required. It signs the token request that mints a fresh installation token for every job. The variable holds a path rather than the key itself because a PEM is multi-line and awkward in a `.env` file; in production the key goes into `GITHUB_APP_PRIVATE_KEY` as a Fly secret instead.
+
+**Not needed yet.** Each of these is in `.env.example` against the milestone that needs it.
+
+| Variable | What it is actually for | Needed |
+|---|---|---|
+| `DISCORD_CLIENT_ID` | the same number as the Application ID. Discord calls it both names | M4, and it is already in the invite URL |
+| `DISCORD_CLIENT_SECRET` | exchanging an OAuth code when a customer installs the bot from our dashboard | M4 |
+| `DISCORD_PUBLIC_KEY` | verifying interaction webhooks, only if slash commands arrive over HTTP rather than the gateway | M3 at the earliest, possibly never |
+| `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET` | sign in with GitHub for the dashboard, `ADR-007`. Unrelated to repository access | M4 |
+| `GITHUB_WEBHOOK_SECRET` | verifying deployment and pull request webhooks | M3 |
+| `R2_*` | attachments and screenshots | M3 |
+| `STRIPE_*` | subscriptions and metering | M5 |
+
+The split on the GitHub side is worth remembering: **App ID plus private key** do the repository work, and **client ID plus secret** only identify a person signing in. M2 needs the first pair and nothing else.
 
 ## 1. Discord: a private test server and a development bot
 
@@ -45,6 +59,8 @@ Everything needed to run HiFi end to end against the fixture repository, and how
    - Turn **Public Bot** off, so nobody else can add your development bot to their server.
    - Under **Privileged Gateway Intents**, turn on **Message Content Intent**. Without it the bot receives mentions with empty text.
    - Save.
+
+**If saving shows "Private application cannot have a default authorization link":** turning Public Bot off makes the application private, and a private application is not allowed to advertise a default install link. Open the **Installation** tab, set **Install Link** to **None**, save there, then return to the **Bot** tab and save again. The invite URL below still works, because a private application can still be added by the person who owns it, which is you.
 
 **Invite the bot to your server.** Open this URL with your application ID in place of `APPLICATION_ID`:
 
