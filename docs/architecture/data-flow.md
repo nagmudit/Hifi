@@ -20,11 +20,19 @@ any non-terminal state -> cancelled | failed | timed_out
 planning, editing       -> waiting_input -> planning
 testing                 -> editing            (one repair attempt only)
 editing                 -> capturing, pushing (repos with no test setup)
+editing                 -> reporting            (nothing to push: see below)
 ```
 
 Terminal states are `succeeded`, `failed`, `cancelled`, `timed_out`, and they are absorbing.
 
 **There is no `awaiting_preview`.** A job ends when the pull request is open. See `ADR-003`.
+
+**A run that changes nothing still reports.** Asking a question, or finding the
+change already made, goes `editing -> reporting -> succeeded` with no pull
+request, carrying the agent's summary. It is a result, not a failure, and the
+report distinguishes the two by whether a pull request exists. Git decides, not
+the agent: a clean working tree is a no-change run however the agent describes
+what it did.
 
 ## What happens in each state
 

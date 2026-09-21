@@ -85,10 +85,14 @@ async function applyUpdate(
 
   if (terminal && "send" in channel) {
     // One mention at the end, so the requester gets exactly one notification.
+    const who = userMention(job.requestedBy.discordUserId);
     const verdict =
-      job.status === JobStatus.succeeded
-        ? `${userMention(job.requestedBy.discordUserId)} your change is ready: ${job.prUrl ?? ""}`
-        : `${userMention(job.requestedBy.discordUserId)} that one did not work out. ${job.statusDetail ?? ""}`;
+      job.status !== JobStatus.succeeded
+        ? `${who} that one did not work out. ${job.statusDetail ?? ""}`
+        : job.prUrl
+          ? `${who} your change is ready: ${job.prUrl}`
+          : // Nothing to push, so promise nothing. The answer is in the embed.
+            `${who} nothing needed changing, see above.`;
     await channel.send(verdict.trim());
   }
 }

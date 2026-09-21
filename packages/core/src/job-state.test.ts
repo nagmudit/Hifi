@@ -40,6 +40,13 @@ describe("job state machine", () => {
     }
   });
 
+  it("lets a run with nothing to push report without a pull request", () => {
+    // A question answered, or a change that turned out to be unnecessary.
+    expect(canTransition(JobStatus.editing, JobStatus.reporting)).toBe(true);
+    // But it still cannot reach a terminal state without reporting first.
+    expect(canTransition(JobStatus.editing, JobStatus.succeeded)).toBe(false);
+  });
+
   it("lets a repo with no tests skip testing", () => {
     expect(canTransition(JobStatus.editing, JobStatus.capturing)).toBe(true);
     expect(canTransition(JobStatus.editing, JobStatus.pushing)).toBe(true);

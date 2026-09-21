@@ -356,7 +356,11 @@ model Job {
   attachments Json @default("[]")
 
   status       JobStatus @default(queued)
+  /// One short sentence for the progress display.
   statusDetail String?
+  /// What the agent said it did, in its own words. Long, and the only thing a
+  /// run that changed no files has to show for itself.
+  summary      String?   @db.Text
   attempt      Int       @default(0)
 
   /// Inputs to model routing, recorded verbatim so the decision can be replayed

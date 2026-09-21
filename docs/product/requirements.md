@@ -1,6 +1,6 @@
 ---
 status: current
-last_verified: 2026-09-15
+last_verified: 2026-09-21
 applies_to: [.]
 ---
 
@@ -16,21 +16,23 @@ Distilled from the original product brief. Status is per requirement and verifie
 
 | ID | Requirement | Status | Where |
 |---|---|---|---|
-| R-01 | Bot acknowledges in a new Discord thread within about 3 seconds of a mention | proposed | M2 |
-| R-02 | Attachments are downloaded to object storage inside the gateway handler, because Discord CDN links are signed and expire | proposed | M2 |
+| R-01 | Bot acknowledges in a new Discord thread within about 3 seconds of a mention | done | verified live in `#hifi-test` |
+| R-02 | Attachments are downloaded to object storage inside the gateway handler, because Discord CDN links are signed and expire | proposed | M3, moved from M2 |
 | R-03 | Channel-to-repo binding resolves which repository a task belongs to; unbound channels are ignored silently | proposed | M4 (schema done) |
-| R-04 | Fresh working tree per job from a warm bare mirror; the mirror persists, the worktree never does | proposed | M2 |
-| R-05 | Agent runs headlessly behind a swappable engine interface | partial | `packages/agent` interface only |
+| R-04 | Fresh working tree per job from a warm bare mirror; the mirror persists, the worktree never does | done | `packages/github/src/git.ts` |
+| R-05 | Agent runs headlessly behind a swappable engine interface | done | `OpenCodeEngine` |
 | R-06 | Tests covering the change are written, then the repository suite is run | proposed | M3 |
 | R-07 | Never report success when tests are red; exactly one repair attempt | proposed | M3 |
 | R-08 | Visual changes captured with before and after screenshots at desktop and mobile widths | proposed | M3 |
-| R-09 | Branch pushed and pull request opened; never a push to a default or protected branch | proposed | M2 |
+| R-09 | Branch pushed and pull request opened; never a push to a default or protected branch | done | `branch-safety.ts`, refusals tested |
 | R-10 | Preview URL read from the GitHub deployment webhook, never by polling Vercel | proposed | M3, see ADR-003 |
-| R-11 | Final report edits the original status message into a rich embed with pull request, preview, tests, screenshots, model, tokens, cost, duration | proposed | M3 |
-| R-12 | Hard wall-clock timeout per job, default 20 minutes, plus a max-turns cap | partial | constants defined, unenforced |
+| R-11 | Final report edits the original status message into a rich embed with pull request, preview, tests, screenshots, model, tokens, cost, duration | partial | embed edits in place; tests, screenshots and preview are M3 |
+| R-12 | Hard wall-clock timeout per job, default 20 minutes, plus a max-turns cap | done | job aborts itself; watchdog catches orphans |
 | R-13 | Cancellation by slash command and by reaction on the thread | proposed | M3 |
-| R-14 | Jobs idempotent on retry: re-running a claimed job must not open a second pull request | partial | unique constraint on `Job.discordMessageId` |
+| R-14 | Jobs idempotent on retry: re-running a claimed job must not open a second pull request | done | three guards, covered by the pipeline suite |
 | R-15 | A job that cannot proceed asks one specific question and parks without holding a concurrency slot | partial | `waiting_input` state exists, see ADR-004 |
+| R-16 | A run that changes no files reports the agent's answer as a result rather than a failure, with no pull request | done | `editing -> reporting -> succeeded` |
+| R-17 | The working tree decides whether anything changed, never the agent's own report | done | `pipeline.ts`, covered by a test |
 
 ## Onboarding
 

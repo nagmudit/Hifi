@@ -13,6 +13,9 @@ const COLOUR_DONE = 0x57f287;
 const COLOUR_FAILED = 0xed4245;
 const COLOUR_STOPPED = 0xfee75c;
 
+/** Discord caps an embed description at 4096 characters. */
+const SUMMARY_MAX = 3500;
+
 const RUNNING_STEPS: JobStatus[] = [
   JobStatus.queued,
   JobStatus.preparing,
@@ -75,6 +78,16 @@ export function buildFinalEmbed(job: Job, repoFullName: string): EmbedBuilder {
       });
   }
 
+  // Succeeded with nothing to push: a question answered, or a change that
+  // turned out to be unnecessary. The agent's own words are the whole result,
+  // so they get the description rather than a one-line status.
+  if (!job.prUrl) {
+    return embed
+      .setTitle("No change needed")
+      .setDescription(truncate(job.summary ?? "The agent made no changes.", SUMMARY_MAX))
+      .addFields({ name: "Run", value: runField(job) });
+  }
+
   const stat = job.diffStat as unknown as DiffStat | null;
   const files =
     stat && stat.files.length > 0
@@ -87,7 +100,7 @@ export function buildFinalEmbed(job: Job, repoFullName: string): EmbedBuilder {
   return embed
     .setTitle("Done")
     .setURL(job.prUrl ?? null)
-    .setDescription(truncate(job.statusDetail ?? "The change is ready to review.", 400))
+    .setDescription(truncate(job.summary ?? "The change is ready to review.", 600))
     .addFields(
       {
         name: "Pull request",

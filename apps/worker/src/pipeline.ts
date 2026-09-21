@@ -273,17 +273,32 @@ export async function runJob(jobId: string, deps: PipelineDeps): Promise<Pipelin
       );
     }
 
+    const summary = result.summary.trim();
+
+    // Git decides, not the agent's self-report. An agent that claims it edited
+    // files while the working tree is clean is a no-change run, because the
+    // tree is the only honest source.
     if (!(await hasChanges(worktree.path))) {
-      throw new HifiError(
-        FailureCode.agent_error,
-        "the agent finished without changing any files",
-        { userMessage: "The agent did not change anything." },
-      );
+      log.info({ outcome: result.outcome }, "run changed no files; reporting the answer");
+
+      await advance(JobStatus.reporting, "Wrapping up");
+      await prisma.job.update({
+        where: { id: jobId },
+        data: {
+          summary,
+          statusDetail: "Nothing needed changing.",
+          finishedAt: new Date(),
+          durationMs: Date.now() - started,
+        },
+      });
+      await advance(JobStatus.succeeded);
+
+      return { status: JobStatus.succeeded };
     }
 
     await advance(JobStatus.pushing, "Opening a pull request");
 
-    const commitMessage = buildCommitMessage(job.prompt, result.summary);
+    const commitMessage = buildCommitMessage(job.prompt, summary);
     await stageAndCommit({ worktreePath: worktree.path, message: commitMessage });
     const sha = await headSha(worktree.path);
     const stat: DiffStat = await diffStat({
@@ -305,20 +320,26 @@ export async function runJob(jobId: string, deps: PipelineDeps): Promise<Pipelin
       head: branch,
       base: repoInfo.defaultBranch,
       title: commitMessage.split("\n")[0] ?? "HiFi change",
-      body: buildPullRequestBody(job, result.summary, stat, usage, deps.config.modelId),
+      body: buildPullRequestBody(job, summary, stat, usage, deps.config.modelId),
     });
 
     await advance(JobStatus.reporting, "Wrapping up");
+
+    // Everything the report needs is written before the terminal status is
+    // published. The bot reads the row as soon as it sees the update, so a
+    // field written afterwards shows up as "unknown".
     await prisma.job.update({
       where: { id: jobId },
-      data: { prNumber: pr.number, prUrl: pr.url },
+      data: {
+        summary,
+        prNumber: pr.number,
+        prUrl: pr.url,
+        finishedAt: new Date(),
+        durationMs: Date.now() - started,
+      },
     });
 
     await advance(JobStatus.succeeded);
-    await prisma.job.update({
-      where: { id: jobId },
-      data: { finishedAt: new Date(), durationMs: Date.now() - started },
-    });
 
     log.info({ pr: pr.url, usage }, "job succeeded");
     return { status: JobStatus.succeeded, prUrl: pr.url };
@@ -329,14 +350,7 @@ export async function runJob(jobId: string, deps: PipelineDeps): Promise<Pipelin
     const terminal =
       error.code === FailureCode.wall_clock_timeout ? JobStatus.timed_out : JobStatus.failed;
 
-    if (status !== JobStatus.failed && status !== JobStatus.succeeded) {
-      try {
-        await advance(terminal, error.userMessage);
-      } catch {
-        // An illegal transition must not mask the original failure.
-      }
-    }
-
+    // Written before the transition, for the same reason as the success path.
     await prisma.job.update({
       where: { id: jobId },
       data: {
@@ -352,6 +366,14 @@ export async function runJob(jobId: string, deps: PipelineDeps): Promise<Pipelin
           : {}),
       },
     });
+
+    if (status !== JobStatus.failed && status !== JobStatus.succeeded) {
+      try {
+        await advance(terminal, error.userMessage);
+      } catch {
+        // An illegal transition must not mask the original failure.
+      }
+    }
 
     return { status: terminal, failure: error.userMessage };
   } finally {

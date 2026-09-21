@@ -255,16 +255,17 @@ describe.skipIf(!dbReachable)("job pipeline", () => {
     expect(await statusSequence(jobId)).toEqual([]);
   }, 180_000);
 
-  it("fails without a pull request when the agent changes nothing", async () => {
+  it("reports a run that changed nothing as a result, not a failure", async () => {
     existingPr = null;
-    const jobId = await createJob("Do nothing at all");
+    const jobId = await createJob("What is the architecture of this repo?");
     const before = opened.length;
+    const answer = "It is a single page with one pure module for pricing.";
 
     const result = await runJob(jobId, {
       engine: stubEngine(async () => ({
         outcome: "no_changes",
         changedFiles: [],
-        summary: "Nothing needed changing.",
+        summary: answer,
         turns: 1,
         tokensIn: 10,
         tokensOut: 1,
@@ -274,12 +275,51 @@ describe.skipIf(!dbReachable)("job pipeline", () => {
       github,
     });
 
-    expect(result.status).toBe(JobStatus.failed);
+    expect(result.status).toBe(JobStatus.succeeded);
+    expect(result.prUrl).toBeUndefined();
     expect(opened.length).toBe(before);
 
     const job = await db().job.findUniqueOrThrow({ where: { id: jobId } });
-    expect(job.failureCode).toBe("agent_error");
-    expect(await statusSequence(jobId)).toContain(JobStatus.failed);
+    expect(job.failureCode).toBeNull();
+    expect(job.summary).toBe(answer);
+    expect(job.prUrl).toBeNull();
+    // Duration is written before the terminal status is published, so the
+    // report never renders it as unknown.
+    expect(job.durationMs).toBeGreaterThanOrEqual(0);
+
+    expect(await statusSequence(jobId)).toEqual([
+      JobStatus.claimed,
+      JobStatus.preparing,
+      JobStatus.planning,
+      JobStatus.editing,
+      JobStatus.reporting,
+      JobStatus.succeeded,
+    ]);
+  }, 180_000);
+
+  it("believes git over an agent that claims an edit it did not make", async () => {
+    existingPr = null;
+    const jobId = await createJob("Claim an edit without making one");
+    const before = opened.length;
+
+    const result = await runJob(jobId, {
+      engine: stubEngine(async () => ({
+        // Says it edited; the working tree disagrees.
+        outcome: "edited",
+        changedFiles: ["app.txt"],
+        summary: "I changed the file.",
+        turns: 1,
+        tokensIn: 10,
+        tokensOut: 1,
+      })),
+      config,
+      logger: createLogger({ service: "test" }),
+      github,
+    });
+
+    expect(result.status).toBe(JobStatus.succeeded);
+    expect(result.prUrl).toBeUndefined();
+    expect(opened.length).toBe(before);
   }, 180_000);
 
   it("fails without a pull request when the agent errors", async () => {

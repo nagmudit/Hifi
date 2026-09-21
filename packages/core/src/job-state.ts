@@ -45,6 +45,10 @@ export const JOB_TRANSITIONS: Readonly<Record<JobStatus, readonly JobStatus[]>> 
       // scaffold a test framework that the repo did not already have.
       JobStatus.capturing,
       JobStatus.pushing,
+      // A run that produced nothing to push still has something to say. Asking
+      // a question, or finding the change already made, is a result rather
+      // than a failure, so it reports without a pull request.
+      JobStatus.reporting,
       JobStatus.waiting_input,
       JobStatus.cancelled,
       JobStatus.failed,
