@@ -58,7 +58,15 @@ export function createMessageHandler(deps: HandlerDeps): (message: Message) => P
 
   return async function onMessage(message: Message): Promise<void> {
     try {
-      if (!shouldHandle(message, deps)) return;
+      const skip = skipReason(message, deps);
+      if (skip) {
+        // Only for messages in the bound channel: everywhere else this would be
+        // noise, and the channel guard is the whole point.
+        if (message.channelId === deps.config.M2_DISCORD_CHANNEL_ID) {
+          deps.logger.debug({ messageId: message.id, skip }, "message not handled");
+        }
+        return;
+      }
 
       const prompt = extractPrompt(message, deps.client.user?.id ?? "");
       if (prompt.length === 0) {
@@ -139,15 +147,19 @@ export function createMessageHandler(deps: HandlerDeps): (message: Message) => P
   };
 }
 
-function shouldHandle(message: Message, deps: HandlerDeps): boolean {
-  if (message.author.bot) return false;
-  if (message.guildId !== deps.config.M2_DISCORD_GUILD_ID) return false;
-  if (message.channelId !== deps.config.M2_DISCORD_CHANNEL_ID) return false;
-  if (message.channel.type !== ChannelType.GuildText) return false;
+/** Null means handle it. Anything else is the reason it was ignored. */
+function skipReason(message: Message, deps: HandlerDeps): string | null {
+  if (message.author.bot) return "author is a bot";
+  if (message.guildId !== deps.config.M2_DISCORD_GUILD_ID) return "different guild";
+  if (message.channelId !== deps.config.M2_DISCORD_CHANNEL_ID) return "different channel";
+  if (message.channel.type !== ChannelType.GuildText) {
+    return `channel type ${String(message.channel.type)}`;
+  }
   const selfId = deps.client.user?.id;
-  if (!selfId) return false;
+  if (!selfId) return "client user not ready";
   // A role mention or @everyone is not a request aimed at us.
-  return message.mentions.users.has(selfId);
+  if (!message.mentions.users.has(selfId)) return "not mentioned directly";
+  return null;
 }
 
 function extractPrompt(message: Message, selfId: string): string {

@@ -62,6 +62,59 @@ client.on("messageCreate", (message: Message) => {
 
 client.on("error", (err) => log.error({ err }, "discord client error"));
 
+/**
+ * A gateway that dies quietly is the worst failure this process has: the bot
+ * looks online in Discord and simply never hears anything again. These events
+ * are the difference between diagnosing that in seconds and guessing.
+ */
+client.on("shardDisconnect", (event, shardId) =>
+  log.warn({ shardId, code: event.code }, "gateway disconnected"),
+);
+client.on("shardReconnecting", (shardId) => log.warn({ shardId }, "gateway reconnecting"));
+client.on("shardResume", (shardId, replayed) =>
+  log.info({ shardId, replayed }, "gateway resumed"),
+);
+client.on("shardError", (err, shardId) => log.error({ shardId, err }, "gateway error"));
+client.on("invalidated", () => {
+  // Discord has told us this session can never resume. Staying up would be
+  // pretending to work, so exit and let the supervisor restart us.
+  log.error("gateway session invalidated; exiting so it can be restarted");
+  process.exit(1);
+});
+
+/**
+ * Proof of life, and a liveness guard.
+ *
+ * The failure that matters is not a crash, it is a socket that stops
+ * delivering while the bot still shows as online. Discord does not always tell
+ * us, so if the connection is not ready for several checks running, this exits
+ * and lets the supervisor start a process that works. Locally that means
+ * restarting it by hand; on Fly the machine restarts on its own.
+ */
+const READY = 0;
+const UNHEALTHY_LIMIT = 3;
+let unhealthy = 0;
+
+setInterval(() => {
+  const status = client.ws.status;
+  log.info(
+    { ping: client.ws.ping, status, guilds: client.guilds.cache.size },
+    "gateway heartbeat",
+  );
+
+  if (status === READY) {
+    unhealthy = 0;
+    return;
+  }
+
+  unhealthy += 1;
+  log.warn({ status, checks: unhealthy }, "gateway is not ready");
+  if (unhealthy >= UNHEALTHY_LIMIT) {
+    log.error({ status }, "gateway never recovered; exiting to be restarted");
+    process.exit(1);
+  }
+}, 60_000).unref();
+
 let shuttingDown = false;
 
 async function shutdown(signal: string): Promise<void> {
