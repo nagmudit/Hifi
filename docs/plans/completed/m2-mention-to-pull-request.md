@@ -1,7 +1,7 @@
 ---
-status: active
+status: completed
 created: 2026-09-15
-last_updated: 2026-09-20
+last_updated: 2026-09-21
 areas: [apps/bot, apps/worker, packages/agent, packages/github, packages/crypto]
 ---
 
@@ -139,6 +139,25 @@ Kept here rather than in the fixture, because anything in the fixture is read by
 - Verified: `Events.ClientReady` really is `clientReady` in discord.js 14.27, checked against the installed package rather than memory. The M1 code used that name but had never actually connected.
 - Note: a timed-out job reaches `timed_out`, not `failed`, so the difference between "we stopped it" and "it broke" survives into the report.
 - Remaining: a human has to post the first mention, because the handler ignores messages from bots and weakening that guard for a test would be the wrong trade.
+
+### 2026-09-21: M2 closed
+
+- Ran: the full loop from a real Discord mention. A question produced a thread, a status message that updated in place, and a final report carrying the agent's architecture answer with no pull request.
+- Found and fixed: the handler ignored the bot's own managed role. Discord offers both the bot user and its role in autocomplete, they look identical once typed, and only the user form was accepted. Whether a request worked depended on which entry the person picked.
+- Found and fixed: a reporting race left duration reading "unknown", because the terminal status was published before the duration was written.
+- Added: gateway lifecycle logging, a one-minute heartbeat, and an exit when the socket is not ready for three checks running. The bot previously logged only connect and error, which made a silent failure impossible to diagnose.
+- Verified the budget stop for real. A 3,000 token ceiling stopped the job after 11,293 tokens, with no branch and no pull request left behind. The overshoot is one agent request, which is not small; recorded in `ADR-008`.
+- Ran: `pnpm test:env`, 101 pass, from 29 at the start of M2.
+
+## Outcome
+
+M2 works. A mention in Discord reaches a worker, runs a real coding agent against a real repository through a proxy that holds the key, and reports back in the thread.
+
+Proven end to end: pull requests #2 and #3 on the fixture, both containing exactly the requested change; a question answered without opening a pull request; a budget stop with nothing left behind; branch safety refusing `main` and refusing a cross-repository pull request.
+
+Not carried out in M2, by design: tests, screenshots, preview links, cancellation, attachments, multi-tenancy.
+
+**Left undone, and worth knowing.** The Discord path has not yet produced a pull request; the two real pull requests came through the development queue tool. And nothing has been pointed at a repository other than the purpose-built fixture, which is where dependency installation usually breaks.
 
 ## Decisions
 

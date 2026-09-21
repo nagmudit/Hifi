@@ -2,7 +2,7 @@
 
 The repository is the source of truth. Start here and read only what your task touches.
 
-**Project status: M1 of 6 complete.** The skeleton boots; the job pipeline does not exist yet. A document marked `proposed` describes something that has not been built.
+**Project status: M2 of 7 complete.** A Discord mention runs a coding agent and opens a pull request. A document marked `proposed` describes something that has not been built.
 
 ## Start
 
@@ -11,7 +11,7 @@ The repository is the source of truth. Start here and read only what your task t
 | [`../AGENTS.md`](../AGENTS.md) | Always, first | current |
 | [architecture/repository-map.md](architecture/repository-map.md) | Finding where code lives | current |
 | [engineering/commands.md](engineering/commands.md) | Running, testing, migrating | current |
-| [plans/active/](plans/active/) | Before touching an area with an open plan | current |
+| [plans/backlog.md](plans/backlog.md) | Picking up the next milestone | current |
 
 ## Working on...
 
@@ -48,12 +48,12 @@ Seven accepted, one proposed. Read ADR-002, ADR-003, ADR-006, and ADR-008 before
 |---|---|
 | [runbooks/dev-credentials.md](runbooks/dev-credentials.md) | setting up Discord, the GitHub App, and a model key for local development |
 
-## In flight
+## Plans
 
 | Doc | Holds |
 |---|---|
-| [plans/active/m2-mention-to-pull-request.md](plans/active/m2-mention-to-pull-request.md) | the current milestone, with three open questions that block it |
-| [plans/backlog.md](plans/backlog.md) | milestones M3 to M6, not started |
+| [plans/completed/m2-mention-to-pull-request.md](plans/completed/m2-mention-to-pull-request.md) | M2, complete: how the loop was built and what was learned |
+| [plans/backlog.md](plans/backlog.md) | milestones M3 to M7, not started |
 | [plans/technical-debt.md](plans/technical-debt.md) | known compromises, each with a trigger for paying it off |
 | [plans/completed/m1-skeleton.md](plans/completed/m1-skeleton.md) | what M1 built and what was actually verified |
 

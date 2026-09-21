@@ -28,6 +28,8 @@ Some of this already exists in design. `Tenant.spendCapMicroUsd` and `spendThisP
 
 **Overshoot is bounded, not zero, and the bound is stated.** A request's cost is only known once its response arrives, so a budget can be exceeded by at most the requests already in flight. Before forwarding, the proxy caps each request's maximum output tokens to what the remaining budget can pay for. That keeps the worst-case overshoot to roughly one request's input per running job.
 
+Measured on 2026-09-21 against a deliberately tiny ceiling: a 3,000 token budget stopped the job after 11,293 tokens. One agent request carries the system prompt and repository context, so a single call can be ten thousand tokens before anything can be counted. The bound holds, but "one request" is not small. Two consequences follow. A budget below roughly one request's context cannot be honoured, and the dashboard should refuse to accept one rather than silently overshooting by 4x. And the enforcement is a stop, not a cap: it prevents a runaway, it does not guarantee the exact number.
+
 **What happens at each threshold.**
 
 | Threshold | Behaviour |

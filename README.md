@@ -2,7 +2,7 @@
 
 A Discord-native coding agent. Tag the bot in a bound channel with a plain-English task, and it opens a pull request with tests, screenshots, and a preview link.
 
-**Status: M1, the skeleton.** The monorepo boots, the schema is migrated, and the queue is wired. No job pipeline yet; that is M2.
+**Status: M2 complete.** A Discord mention produces a pull request, written by a real coding agent against a real repository. M3 adds tests, screenshots, and preview links.
 
 ## Layout
 
@@ -65,8 +65,9 @@ pnpm dev:worker
 | | | |
 |---|---|---|
 | M1 | Skeleton | done |
-| M2 | Single-tenant happy path, mention to pull request | next |
-| M3 | Tests, screenshots, previews, rich embed, cancellation |  |
+| M2 | Single-tenant happy path, mention to pull request | done |
+| M3 | Tests, screenshots, previews, rich embed, cancellation | next |
 | M4 | Multi-tenancy, sealed credentials, install flows |  |
 | M5 | Dashboard and billing |  |
 | M6 | Hardening: egress allowlist, spend caps, rate limits, telemetry |  |
+| M7 | Slack and email surfaces |  |

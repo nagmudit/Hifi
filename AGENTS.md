@@ -4,7 +4,7 @@ HiFi is a multi-tenant SaaS product. A customer signs in with GitHub, connects t
 
 Discord is the first surface, not the only one. Slack and email are planned, and the abstraction that makes them possible is scheduled for M4. Before you add a Discord-shaped column or a Discord-shaped concept, read `docs/architecture/decisions/ADR-005-multi-surface.md`.
 
-**Status: M1 of 6 complete.** The skeleton boots and the schema is migrated. There is no job pipeline yet. Most of this repository is interface and intent, so check the status marker on a document before assuming the thing it describes runs.
+**Status: M2 of 7 complete.** A Discord mention runs a real coding agent against a real repository and opens a pull request. Tests, screenshots, preview links, cancellation, and multi-tenancy are not built. Check the status marker on a document before assuming the thing it describes runs.
 
 ## Source of truth
 
@@ -24,7 +24,7 @@ Record conflicts, never silently resolve them in favour of whichever is easier.
 ## Before you start
 
 1. Read `docs/index.md` and follow it to what your task touches, not everything.
-2. Read `docs/plans/active/` for work already underway in that area.
+2. Read `docs/plans/active/` for work underway, and `docs/plans/backlog.md` for what the current milestone covers.
 3. Read the `README.md` of every package you will touch. Each one states what that package owns and what it must never do, and the "must never" half is load-bearing.
 4. Read the implementation and its tests.
 5. Run `git status`.
@@ -40,14 +40,14 @@ TypeScript on Node 22, ESM throughout, pnpm workspace monorepo. PostgreSQL throu
 |---|---|
 | `apps/bot` | Discord gateway. Creates jobs, never advances one. |
 | `apps/api` | Fastify control plane: webhooks, dashboard backend, onboarding. |
-| `apps/worker` | Job pipeline. The only process that changes job status. |
+| `apps/worker` | Job pipeline, model proxy, watchdog. The only process that changes job status. |
 | `apps/dashboard` | Next.js onboarding, usage, billing. Built in M5. |
 | `packages/db` | Prisma schema, migrations, client. Source of truth for every enum. |
 | `packages/core` | Job state machine, error taxonomy, queue schema, logging, Redis. |
 | `packages/crypto` | Credential sealing and log redaction. Leaf package, no internal deps. |
-| `packages/agent` | Agent engine interface. OpenCode implementation lands in M2. |
+| `packages/agent` | Agent engine interface, and `OpenCodeEngine` behind it. |
 | `packages/router` | Model selection. Interface only until M3. |
-| `packages/github` | App auth, mirrors, branches, pull requests. Interface only until M2. |
+| `packages/github` | App auth, mirrors, worktrees, branch safety, pull requests. |
 | `packages/vercel` | Preview deployment resolution. Interface only until M3. |
 
 Full reasoning in `docs/architecture/repository-map.md`, including the surprises section.
@@ -60,7 +60,7 @@ Full reasoning in `docs/architecture/repository-map.md`, including the surprises
 | Local infra up | `pnpm dev:infra` (needs Docker Desktop running) |
 | Migrate | `pnpm db:migrate` |
 | Build everything | `pnpm build` |
-| Test | `pnpm test` |
+| Test | `pnpm test` (add `:env` to include the suites that need Postgres) |
 | Typecheck | `pnpm typecheck` |
 | Run the API | `pnpm dev:api` |
 | Run the worker | `pnpm dev:worker` |

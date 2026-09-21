@@ -62,4 +62,4 @@ The tiers put effort where customers are. Most will arrive with an OpenAI, Anthr
 
 ## Related
 
-`ADR-002` for the proxy itself, `packages/agent/src/index.ts`, `packages/crypto/src/redact.ts`, the `ModelEntry` model, `docs/architecture/security-model.md` controls S-9 and S-13.
+`ADR-002` for the proxy itself, `apps/worker/src/proxy.ts`, `packages/crypto/src/redact.ts`, the `ModelEntry` model, `docs/architecture/security-model.md` controls S-9 and S-13.

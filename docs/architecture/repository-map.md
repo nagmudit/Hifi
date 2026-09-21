@@ -74,7 +74,10 @@ crypto                 (leaf: depends on nothing internal)
 | Timeouts, limits, queue name, branch prefix | `packages/core/src/constants.ts` |
 | Queue payload and test/diff/signal schemas | `packages/core/src/schemas.ts` |
 | Failure codes and user-facing messages | `packages/core/src/errors.ts` |
-| Agent system preamble | `packages/agent/src/index.ts` |
+| Agent system preamble | `packages/agent/src/types.ts` |
+| The OpenCode engine | `packages/agent/src/opencode.ts` |
+| The model proxy and budget | `apps/worker/src/proxy.ts` |
+| The job pipeline | `apps/worker/src/pipeline.ts` |
 | HTTP health endpoints | `apps/api/src/server.ts` |
 | Docker images | `deploy/Dockerfile`, `deploy/Dockerfile.worker` |
 | Fly configuration | `apps/*/fly.toml` |
