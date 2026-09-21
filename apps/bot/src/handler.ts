@@ -10,6 +10,7 @@ import { Queue } from "bullmq";
 import { ChannelType, type Client, type Message } from "discord.js";
 
 import type { BotConfig } from "./env.js";
+import { botRoleIds, mentionsBot, stripMentions, type MentionInput } from "./mentions.js";
 import { buildRunningEmbed } from "./report.js";
 
 /**
@@ -157,16 +158,26 @@ function skipReason(message: Message, deps: HandlerDeps): string | null {
   }
   const selfId = deps.client.user?.id;
   if (!selfId) return "client user not ready";
-  // A role mention or @everyone is not a request aimed at us.
-  if (!message.mentions.users.has(selfId)) return "not mentioned directly";
+  // Accepts the bot's own managed role as well as the user, but not @everyone
+  // and not an ordinary role the bot happens to hold.
+  if (!mentionsBot(mentionInput(message, selfId))) return "not addressed to this bot";
   return null;
 }
 
+function mentionInput(message: Message, selfId: string): MentionInput {
+  return {
+    selfId,
+    userMentionIds: [...message.mentions.users.keys()],
+    roleMentions: message.mentions.roles.map((role) => ({
+      id: role.id,
+      botId: role.tags?.botId ?? null,
+    })),
+  };
+}
+
 function extractPrompt(message: Message, selfId: string): string {
-  return message.content
-    .replace(new RegExp(`<@!?${selfId}>`, "g"), " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const input = mentionInput(message, selfId);
+  return stripMentions(message.content, selfId, botRoleIds(input));
 }
 
 function threadName(prompt: string): string {
