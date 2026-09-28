@@ -3,7 +3,7 @@ import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
-import { HifiError, type DiffStat } from "@hifi/core";
+import { childEnv, HifiError, type DiffStat } from "@hifi/core";
 import { FailureCode } from "@hifi/db";
 
 const exec = promisify(execFile);
@@ -40,21 +40,28 @@ export interface WorktreeRef {
  * install scripts. Verified against git 2.45.
  */
 function gitEnv(auth?: GitAuth): NodeJS.ProcessEnv {
-  const base: NodeJS.ProcessEnv = {
-    ...process.env,
+  const extra: Record<string, string> = {
     // Never sit waiting for a username at a prompt nobody can answer.
     GIT_TERMINAL_PROMPT: "0",
     GIT_ASKPASS: "",
+    // Ignore the host's user and system git config. This machine's system
+    // config names the Git Credential Manager, so without this a refused App
+    // token would let git fall back to a person's own GitHub login and push as
+    // them. HiFi only ever authenticates as the App.
+    GIT_CONFIG_NOSYSTEM: "1",
+    GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null",
   };
-  if (!auth) return base;
 
-  const basic = Buffer.from(`x-access-token:${auth.token}`).toString("base64");
-  return {
-    ...base,
-    GIT_CONFIG_COUNT: "1",
-    GIT_CONFIG_KEY_0: `http.https://${auth.host ?? "github.com"}/.extraheader`,
-    GIT_CONFIG_VALUE_0: `Authorization: Basic ${basic}`,
-  };
+  if (auth) {
+    const basic = Buffer.from(`x-access-token:${auth.token}`).toString("base64");
+    extra.GIT_CONFIG_COUNT = "1";
+    extra.GIT_CONFIG_KEY_0 = `http.https://${auth.host ?? "github.com"}/.extraheader`;
+    extra.GIT_CONFIG_VALUE_0 = `Authorization: Basic ${basic}`;
+  }
+
+  // Built from an allowlist, never from the worker's own environment, which
+  // holds the customer's model key. S-14.
+  return childEnv({ extra });
 }
 
 /** The real subcommand, skipping any leading `-c key=value` pairs, for messages. */

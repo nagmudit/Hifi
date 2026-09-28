@@ -54,3 +54,22 @@ Acceptable for development. Production keys must be Fly secrets, must differ fro
 Unlikely to work in a Windows shell, and the primary development machine is Windows.
 
 **Trigger:** the first time someone needs it. Low cost to fix with `rimraf` or a Node script.
+
+## D-09 - The GitHub App private key sits on the worker
+
+The worker mints its own installation tokens with the App private key. That key can mint a token for every installation of the App, which means every customer.
+
+With one tenant this is harmless. On a per-tenant machine, it means a compromised worker for one customer can reach every other customer's repositories, which breaks the isolation `ADR-001` promises.
+
+**Fix:** the control plane mints the token, narrowed to the single repository the job is bound to, and hands the worker only that token. GitHub supports scoping an installation token to named repositories.
+
+**Trigger:** before M4 creates a second tenant. Not optional.
+
+## D-10 - The master secret key sits on the worker
+
+Unsealing a credential needs the master secret key, and the security model puts it on workers. On a per-tenant machine, every tenant's worker would hold a key that unseals every tenant's credentials.
+
+**Fix:** the control plane unseals and delivers only that tenant's credential over an authenticated channel, or keys become per tenant. The first is simpler and keeps one key to rotate.
+
+**Trigger:** before M4 creates a second tenant. Not optional.
+

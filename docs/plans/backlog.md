@@ -28,7 +28,8 @@ Turns a working loop into a usable product.
 - Tenant resolution from the surface account, replacing the hardcoded M2 configuration.
 - **Sign in with GitHub and the workspace model, per `ADR-007`, accepted.** A tenant is created at sign-up, not by the Discord install callback, and every integration becomes a separately revocable connection.
 - **The surface abstraction, per `ADR-005`.** Tenant identity, user identity, bindings, and the four `discord*` job columns become surface plus external ID, and a `Surface` adapter interface goes in front of `discord.js`. Done here rather than at M7 because M4 rewrites these exact tables anyway, and because doing it afterwards means migrating live tenant data.
-- Sealed credential storage and the unseal path in the worker.
+- Sealed credential storage, with unsealing moved to the control plane so the master secret key never reaches a tenant worker. See D-10.
+- Installation tokens minted by the control plane and narrowed to the bound repository, so the App private key never reaches a tenant worker. See D-09.
 - Per-tenant Fly Machines and volumes, created through the Machines API.
 - Discord OAuth install flow and GitHub App install flow, both with `state` carrying the tenant.
 - Channel-to-repo bindings and the quota, concurrency, and suspension checks in the bot.

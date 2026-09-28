@@ -1,7 +1,10 @@
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
-import { rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
+
+import { childEnv } from "@hifi/core";
 
 import {
   AGENT_SYSTEM_PREAMBLE,
@@ -95,12 +98,16 @@ export class OpenCodeEngine implements AgentEngine {
   async run(input: AgentRunInput): Promise<AgentResult> {
     const configPath = path.join(input.cwd, CONFIG_FILE);
     await writeFile(configPath, this.buildConfig(input), "utf8");
+    // An empty config home for this run only, so nobody's personal OpenCode
+    // config can shape a customer job. Verified that OpenCode honours it.
+    const configHome = await mkdtemp(path.join(tmpdir(), "hifi-opencode-"));
 
     try {
-      return await this.spawnRun(input);
+      return await this.spawnRun(input, configHome);
     } finally {
       // Otherwise the agent's own config is staged into the customer's commit.
       await rm(configPath, { force: true });
+      await rm(configHome, { recursive: true, force: true });
     }
   }
 
@@ -126,7 +133,7 @@ export class OpenCodeEngine implements AgentEngine {
     );
   }
 
-  private spawnRun(input: AgentRunInput): Promise<AgentResult> {
+  private spawnRun(input: AgentRunInput, configHome: string): Promise<AgentResult> {
     const prompt = `${AGENT_SYSTEM_PREAMBLE}\n\n---\n\nThe request:\n\n${input.prompt}`;
     const args = [
       "run",
@@ -148,7 +155,9 @@ export class OpenCodeEngine implements AgentEngine {
         // stdin closed: an open pipe makes the process hang after init.
         stdio: ["ignore", "pipe", "pipe"],
         shell: false,
-        env: { ...process.env },
+        // Never the worker's own environment: it holds the customer's model
+        // key, and the agent runs shell commands. An allowlist only. S-14.
+        env: childEnv({ extra: { XDG_CONFIG_HOME: configHome } }),
       });
 
       const texts: string[] = [];

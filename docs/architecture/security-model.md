@@ -31,6 +31,7 @@ Separately, the agent reads repository files, issue text, and screenshots, any o
 | S-11 | Webhook signatures verified for GitHub, Stripe, and Discord. Unsigned rejected. | `apps/api` | proposed, M4 |
 | S-12 | An inbound email request runs only from a verified, allowlisted sender. | email surface adapter | proposed, M7. See `ADR-005` |
 | S-13 | A custom model endpoint is HTTPS only, resolves to a public address, and is pinned to that address for the request. | model proxy and onboarding validation | proposed, M5. See `ADR-006` |
+| S-14 | Every subprocess gets an environment built from an allowlist of ordinary system variables, never the worker's own. Git ignores the host's user and system config, so it can never fall back to a person's stored GitHub login. | `childEnv` in `packages/core`, and a guard test that fails the build on any `...process.env` spread | done, M3 chunk 0. Verified live: the agent's shell sees no secret |
 
 ## Credential handling
 
@@ -72,6 +73,12 @@ Where a control protects something irreversible, the design deliberately doubles
 - Branch safety is checked in our code **and** customers are told to enable branch protection with required reviews.
 - Prompt injection is addressed by the system preamble **and** by hard checks in the worker. The preamble alone is not a security control; a prompt cannot be relied on to constrain a model.
 - Spend is capped by the proxy **and** bounded by the job wall clock and max-turns cap.
+
+## Incident: the agent could read the model key
+
+Found while planning M3, fixed in chunk 0. M2 spawned the agent with the worker's full environment, and the worker starts with the model key in it. The agent runs shell commands under `--auto`, so it, or a prompt injected through repository content, could read the key directly. That defeated the proxy in ADR-002, which exists so the key never reaches repo-controlled code.
+
+No key was exposed: every M2 job ran against the fixture this project built, with prompts written by its owner. The fix is S-14, and the guard test keeps it from coming back.
 
 ## Known gaps at M1
 
